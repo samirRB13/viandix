@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Viandix | Viandas Premium</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        primary: "#005145", "primary-container": "#1f6a5c", "primary-fixed": "#a9f0de",
+        "primary-fixed-dim": "#8dd4c3", "on-primary": "#ffffff", "on-primary-container": "#a0e7d5",
+        secondary: "#8f4e00", "secondary-container": "#fe9832", "secondary-fixed": "#ffdcc2",
+        "on-secondary": "#ffffff", "on-secondary-container": "#683700",
+        background: "#faf9f7", surface: "#faf9f7", "surface-container": "#efeeec",
+        "surface-container-low": "#f4f3f1", "surface-container-high": "#e9e8e6",
+        "surface-container-highest": "#e3e2e0", "surface-container-lowest": "#ffffff",
+        "on-surface": "#1a1c1b", "on-surface-variant": "#3f4946",
+        outline: "#6f7976", "outline-variant": "#bec9c5",
+      },
+      fontFamily: { headline: ["Plus Jakarta Sans"], body: ["Inter"] },
+      borderRadius: { DEFAULT:"0.25rem", lg:"0.5rem", xl:"0.75rem", "2xl":"1rem", "3xl":"1.5rem", full:"9999px" }
+    }
+  }
+}
+</script>
+<style>
+.material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; }
+.fill-icon { font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24; }
+.screen { display:none; } .screen.active { display:block; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+.fade-up { animation:fadeUp 0.35s ease both; }
+@keyframes bounceIn { 0%{transform:scale(.5);opacity:0} 60%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+.success-icon { animation:bounceIn 0.5s ease both; }
+.pack-card { transition:all .2s ease; cursor:pointer; border:2px solid transparent; }
+.pack-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,81,69,.12); }
+.pack-card.selected { border-color:#005145; background:#f0fdf8; }
+.vianda-card { transition:all .2s ease; }
+.vianda-card.added { outline:2px solid #005145; }
+.counter-fill { transition:width .4s cubic-bezier(.4,0,.2,1); }
+.lunes-slot { cursor:pointer; transition:all .15s ease; border:2px solid #bec9c5; }
+.lunes-slot:hover { border-color:#005145; }
+.lunes-slot.selected { border-color:#005145; background:#f0fdf8; }
+.step-dot { width:8px; height:8px; border-radius:50%; background:#bec9c5; transition:all .2s ease; }
+.step-dot.active { background:#005145; width:24px; border-radius:4px; }
+.step-dot.done { background:#8dd4c3; }
+.btn-primary { background:#005145; color:white; transition:all .2s ease; }
+.btn-primary:hover:not(:disabled) { background:#1f6a5c; transform:translateY(-1px); }
+.btn-primary:disabled { background:#bec9c5; cursor:not-allowed; }
+.tag { display:inline-flex; align-items:center; padding:2px 10px; border-radius:9999px; font-size:11px; font-weight:600; }
+#toast { position:fixed; bottom:96px; left:50%; transform:translateX(-50%) translateY(16px); background:#1a1c1b; color:white; padding:10px 20px; border-radius:9999px; font-size:13px; font-weight:500; opacity:0; transition:all .3s ease; pointer-events:none; z-index:999; white-space:nowrap; }
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+.field { width:100%; padding:12px 16px; border:1.5px solid #bec9c5; border-radius:12px; font-size:14px; outline:none; transition:border-color .2s; font-family:'Inter',sans-serif; background:white; }
+.field:focus { border-color:#005145; }
+.field-label { font-size:12px; font-weight:600; color:#3f4946; margin-bottom:4px; }
+.pago-opt { border:2px solid #bec9c5; border-radius:12px; padding:12px 16px; cursor:pointer; transition:all .15s ease; display:flex; align-items:center; gap:12px; }
+.pago-opt.selected { border-color:#005145; background:#f0fdf8; }
+.pago-opt input { accent-color:#005145; width:16px; height:16px; }
+#loading-overlay { position:fixed; inset:0; background:rgba(250,249,247,.92); z-index:9999; display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
+#loading-overlay.show { display:flex; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.spinner { width:40px; height:40px; border:3px solid #bec9c5; border-top-color:#005145; border-radius:50%; animation:spin .8s linear infinite; }
+.skeleton { background:linear-gradient(90deg,#e9e8e6 25%,#f4f3f1 50%,#e9e8e6 75%); background-size:200% 100%; animation:shimmer 1.2s infinite; border-radius:12px; }
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+</style>
+</head>
+<body class="bg-background text-on-surface font-body min-h-screen">
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p class="text-sm text-on-surface-variant font-medium" id="loading-msg">Cargando…</p>
+</div>
+
+<nav class="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-xl border-b border-outline-variant/30">
+  <div class="flex justify-between items-center px-5 py-3 max-w-lg mx-auto">
+    <span class="text-lg font-bold tracking-tight text-primary font-headline">Viandix</span>
+    <div id="cart-btn" style="display:none">
+      <button class="relative p-2 text-primary hover:opacity-70 transition-opacity">
+        <span class="material-symbols-outlined">shopping_bag</span>
+        <span id="cart-count" class="absolute -top-0 -right-0 w-5 h-5 bg-secondary text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
+      </button>
+    </div>
+  </div>
+  <div id="step-dots" style="display:none!important" class="flex justify-center gap-2 pb-2.5">
+    <div class="step-dot active" id="dot-1"></div>
+    <div class="step-dot" id="dot-2"></div>
+    <div class="step-dot" id="dot-3"></div>
+    <div class="step-dot" id="dot-4"></div>
+  </div>
+</nav>
+<div id="toast"></div>
+
+<!-- SCREEN 1: CATÁLOGO -->
+<div id="screen-catalog" class="screen active pt-14">
+  <div class="relative bg-primary px-6 pt-10 pb-16 overflow-hidden">
+    <div class="absolute inset-0 opacity-10" style="background:radial-gradient(circle at 80% 20%,#a9f0de 0%,transparent 60%)"></div>
+    <div class="relative z-10 max-w-lg mx-auto">
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-primary-fixed text-xs font-semibold mb-4">
+        <span class="material-symbols-outlined fill-icon text-base">local_shipping</span>
+        Envíos todos los lunes · La Rioja
+      </div>
+      <h1 class="text-4xl font-headline font-extrabold text-white leading-[1.1] mb-3">Comé bien,<br/><span class="text-secondary-container">sin cocinar.</span></h1>
+      <p class="text-primary-fixed-dim text-sm leading-relaxed mb-6">Elegí tu pack de viandas congeladas y te las llevamos el lunes.</p>
+      <button onclick="showScreen('screen-pack')" class="w-full py-3.5 bg-secondary-container text-on-surface rounded-full font-bold text-base hover:opacity-90 transition-opacity">Armar mi pack →</button>
+    </div>
+  </div>
+  <div class="max-w-lg mx-auto px-5 -mt-5 mb-6">
+    <div class="bg-white rounded-2xl shadow-lg p-4 flex gap-3 justify-between">
+      <div onclick="quickPack(5)"  class="flex-1 text-center py-2.5 rounded-xl border-2 border-outline-variant cursor-pointer hover:border-primary transition-colors"><div class="font-headline font-bold text-primary text-lg">5</div><div class="text-xs text-outline">viandas</div></div>
+      <div onclick="quickPack(10)" class="flex-1 text-center py-2.5 rounded-xl border-2 border-outline-variant cursor-pointer hover:border-primary transition-colors"><div class="font-headline font-bold text-primary text-lg">10</div><div class="text-xs text-outline">viandas</div></div>
+      <div onclick="quickPack(15)" class="flex-1 text-center py-2.5 rounded-xl border-2 border-outline-variant cursor-pointer hover:border-primary transition-colors"><div class="font-headline font-bold text-primary text-lg">15</div><div class="text-xs text-outline">viandas</div></div>
+      <div onclick="quickPack(20)" class="flex-1 text-center py-2.5 rounded-xl border-2 border-outline-variant cursor-pointer hover:border-primary transition-colors relative"><div class="font-headline font-bold text-primary text-lg">20</div><div class="text-xs text-outline">viandas</div><div class="absolute -top-2 -right-1 tag bg-secondary-fixed text-on-secondary-container">Mejor</div></div>
+    </div>
+  </div>
+  <div class="max-w-lg mx-auto px-5 mb-24">
+    <div class="flex items-center justify-between mb-1">
+      <h2 class="font-headline font-bold text-xl text-primary">Menú esta semana</h2>
+      <span id="menu-fecha" class="text-xs text-on-surface-variant"></span>
+    </div>
+    <p class="text-on-surface-variant text-sm mb-4">Elegí tu pack para empezar a seleccionar.</p>
+    <div class="grid grid-cols-2 gap-3" id="menu-preview"></div>
+  </div>
+</div>
+
+<!-- SCREEN 2: PACK -->
+<div id="screen-pack" class="screen pt-16 pb-28">
+  <div class="max-w-lg mx-auto px-5 py-6 fade-up">
+    <button onclick="showScreen('screen-catalog')" class="flex items-center gap-1 text-sm text-on-surface-variant mb-5"><span class="material-symbols-outlined text-base">arrow_back</span> Volver</button>
+    <h2 class="font-headline font-bold text-2xl text-primary mb-1">Elegí tu pack</h2>
+    <p class="text-on-surface-variant text-sm mb-6">Cuantas más viandas, mejor precio por unidad.</p>
+    <div class="space-y-3" id="pack-list"></div>
+    <div class="mt-6 p-4 bg-surface-container-low rounded-2xl flex items-start gap-3">
+      <span class="material-symbols-outlined text-primary mt-0.5">info</span>
+      <p class="text-sm text-on-surface-variant">Podés mezclar cualquier vianda del menú. Cada pack incluye envío gratis.</p>
+    </div>
+  </div>
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/30 px-5 py-4 max-w-lg mx-auto">
+    <button id="btn-pack-next" onclick="goToViandas()" disabled class="btn-primary w-full py-3.5 rounded-full font-bold text-base">Elegir viandas</button>
+  </div>
+</div>
+
+<!-- SCREEN 3: VIANDAS -->
+<div id="screen-viandas" class="screen pt-14 pb-28">
+  <div class="max-w-lg mx-auto px-5 pt-4">
+    <div class="sticky top-14 bg-white/95 backdrop-blur-sm z-40 py-3 -mx-5 px-5 border-b border-outline-variant/20">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-sm font-semibold">Viandas elegidas</span>
+        <span class="font-headline font-bold text-primary text-lg" id="counter-label">0 / 5</span>
+      </div>
+      <div class="h-2 bg-surface-container-highest rounded-full overflow-hidden">
+        <div id="counter-bar" class="counter-fill h-full bg-primary rounded-full" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="py-4">
+      <h2 class="font-headline font-bold text-xl text-primary mb-1">Seleccioná tus viandas</h2>
+      <p class="text-on-surface-variant text-sm mb-4">Completá las <strong id="pack-qty-label">5</strong> viandas de tu pack para continuar.</p>
+    </div>
+    <div class="flex gap-2 overflow-x-auto pb-3 -mx-5 px-5 mb-4" id="cat-filters"></div>
+    <div class="grid grid-cols-2 gap-3 mb-6" id="viandas-grid"></div>
+  </div>
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/30 px-5 py-4 max-w-lg mx-auto">
+    <button id="btn-viandas-next" onclick="showScreen('screen-entrega'); setupEntrega();" disabled class="btn-primary w-full py-3.5 rounded-full font-bold text-base">Elegir entrega</button>
+  </div>
+</div>
+
+<!-- SCREEN 4: ENTREGA -->
+<div id="screen-entrega" class="screen pt-16 pb-28">
+  <div class="max-w-lg mx-auto px-5 py-5 fade-up">
+    <button onclick="showScreen('screen-viandas')" class="flex items-center gap-1 text-sm text-on-surface-variant mb-5"><span class="material-symbols-outlined text-base">arrow_back</span> Volver</button>
+    <h2 class="font-headline font-bold text-2xl text-primary mb-1">¿Cuándo te entregamos?</h2>
+    <p class="text-on-surface-variant text-sm mb-5">Hacemos repartos todos los lunes.</p>
+    <div id="entrega-split-section" style="display:none" class="mb-5">
+      <div class="mb-4 p-4 bg-secondary-fixed/40 rounded-2xl border border-secondary-fixed flex items-start gap-3">
+        <span class="material-symbols-outlined text-secondary mt-0.5">kitchen</span>
+        <div><p class="text-sm font-semibold text-on-secondary-container">¿Sin espacio en tu freezer?</p><p class="text-xs text-on-surface-variant mt-0.5">Podemos dividir tu pedido en 2 entregas semanales por $500 extra.</p></div>
+      </div>
+      <div class="flex gap-3 mb-4">
+        <button onclick="setEntregaMode('una')" id="btn-una" class="flex-1 py-3 rounded-xl border-2 border-primary bg-primary/5 text-primary font-semibold text-sm">1 entrega</button>
+        <button onclick="setEntregaMode('dos')" id="btn-dos" class="flex-1 py-3 rounded-xl border-2 border-outline-variant text-on-surface-variant font-semibold text-sm">2 entregas <span class="text-xs font-normal">(+$500)</span></button>
+      </div>
+      <div id="split-selector" style="display:none" class="mb-5 p-4 bg-surface-container-low rounded-2xl">
+        <p class="text-sm font-semibold mb-3">¿Cuántas viandas en cada entrega?</p>
+        <div class="flex items-center gap-4">
+          <div class="text-center flex-1"><p class="text-xs text-on-surface-variant mb-1">Lunes 1</p>
+            <div class="flex items-center justify-center gap-2">
+              <button onclick="changeSplit(-1)" class="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center font-bold hover:bg-surface-container">-</button>
+              <span id="split-a" class="font-headline font-bold text-xl text-primary w-8 text-center">5</span>
+              <button onclick="changeSplit(1)" class="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center font-bold hover:bg-surface-container">+</button>
+            </div>
+          </div>
+          <span class="text-on-surface-variant text-lg">+</span>
+          <div class="text-center flex-1"><p class="text-xs text-on-surface-variant mb-1">Lunes 2</p><div class="font-headline font-bold text-xl text-primary text-center" id="split-b">5</div></div>
+          <span class="text-on-surface-variant">=</span>
+          <div class="text-center"><p class="text-xs text-on-surface-variant mb-1">Total</p><div class="font-headline font-bold text-xl" id="split-total">10</div></div>
+        </div>
+      </div>
+    </div>
+    <div id="lunes-container-1"><p class="text-sm font-semibold mb-3" id="lunes-label-1">Elegí el lunes de entrega</p><div class="grid grid-cols-3 gap-2" id="lunes-grid-1"></div></div>
+    <div id="lunes-container-2" style="display:none" class="mt-5"><p class="text-sm font-semibold mb-3">Segundo lunes de entrega</p><div class="grid grid-cols-3 gap-2" id="lunes-grid-2"></div></div>
+    <div class="mt-5"><p class="text-sm font-semibold mb-3">Rango horario</p><div class="grid grid-cols-2 gap-2" id="horario-grid"></div></div>
+  </div>
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/30 px-5 py-4 max-w-lg mx-auto">
+    <button id="btn-entrega-next" onclick="showScreen('screen-checkout'); renderCheckout();" disabled class="btn-primary w-full py-3.5 rounded-full font-bold text-base">Continuar al pago</button>
+  </div>
+</div>
+
+<!-- SCREEN 5: CHECKOUT -->
+<div id="screen-checkout" class="screen pt-16 pb-28">
+  <div class="max-w-lg mx-auto px-5 py-5 fade-up">
+    <button onclick="showScreen('screen-entrega')" class="flex items-center gap-1 text-sm text-on-surface-variant mb-5"><span class="material-symbols-outlined text-base">arrow_back</span> Volver</button>
+    <h2 class="font-headline font-bold text-2xl text-primary mb-5">Confirmá tu pedido</h2>
+    <div class="bg-surface-container-low rounded-2xl p-4 mb-5"><p class="text-xs font-bold uppercase tracking-widest text-outline mb-3">Resumen</p><div id="checkout-summary" class="space-y-1.5 text-sm"></div></div>
+    <div class="mb-5">
+      <p class="text-xs font-bold uppercase tracking-widest text-outline mb-3">Tus datos</p>
+      <div class="space-y-3">
+        <div><p class="field-label">Nombre completo</p><input id="f-nombre" type="text" placeholder="Ej: María García" class="field"/></div>
+        <div><p class="field-label">Teléfono / WhatsApp</p><input id="f-tel" type="tel" placeholder="+54 9 380 000-0000" class="field"/></div>
+        <div><p class="field-label">Dirección de entrega</p><input id="f-dir" type="text" placeholder="Calle, número, piso/depto" class="field"/></div>
+        <div><p class="field-label">Barrio / Localidad</p><input id="f-barrio" type="text" placeholder="Ej: Capital, Banda Florida…" class="field"/></div>
+      </div>
+    </div>
+    <div class="mb-5">
+      <p class="text-xs font-bold uppercase tracking-widest text-outline mb-3">Método de pago</p>
+      <div class="space-y-2">
+        <div class="pago-opt selected" onclick="selectPago(this,'transferencia')"><input type="radio" name="pago" checked/><span class="material-symbols-outlined text-primary">account_balance</span><div><p class="text-sm font-semibold">Transferencia / CBU</p><p class="text-xs text-on-surface-variant">Alias: VIANDIX</p></div></div>
+        <div class="pago-opt" onclick="selectPago(this,'mercadopago')"><input type="radio" name="pago"/><span class="material-symbols-outlined text-primary">payments</span><div><p class="text-sm font-semibold">MercadoPago</p><p class="text-xs text-on-surface-variant">Link por WhatsApp</p></div></div>
+        <div class="pago-opt" onclick="selectPago(this,'efectivo')"><input type="radio" name="pago"/><span class="material-symbols-outlined text-primary">wallet</span><div><p class="text-sm font-semibold">Efectivo al recibir</p><p class="text-xs text-on-surface-variant">Solo zona capital</p></div></div>
+      </div>
+    </div>
+    <div class="bg-primary rounded-2xl p-5 mb-2">
+      <div class="flex justify-between text-white mb-2"><span class="text-sm opacity-80">Pack</span><span id="t-pack" class="font-semibold">—</span></div>
+      <div id="t-extra-row" style="display:none" class="flex justify-between text-white mb-2"><span class="text-sm opacity-80">2da entrega</span><span class="font-semibold">$500</span></div>
+      <div class="border-t border-white/20 pt-3 flex justify-between text-white"><span class="font-semibold">Total</span><span id="t-total" class="font-headline font-bold text-2xl">—</span></div>
+    </div>
+    <p class="text-xs text-on-surface-variant text-center mb-2">Envío gratis incluido en el pack</p>
+  </div>
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/30 px-5 py-4 max-w-lg mx-auto">
+    <button onclick="confirmOrder()" class="btn-primary w-full py-3.5 rounded-full font-bold text-base">Confirmar pedido</button>
+  </div>
+</div>
+
+<!-- SCREEN 6: CONFIRMACIÓN -->
+<div id="screen-confirm" class="screen pt-14">
+  <div class="max-w-lg mx-auto px-5 py-12 text-center fade-up">
+    <div class="w-24 h-24 bg-primary-fixed rounded-full flex items-center justify-center mx-auto mb-6 success-icon"><span class="material-symbols-outlined fill-icon text-5xl text-primary">check_circle</span></div>
+    <h2 class="font-headline font-extrabold text-3xl text-primary mb-2">¡Pedido confirmado!</h2>
+    <p class="text-on-surface-variant mb-6" id="confirm-msg"></p>
+    <div class="bg-surface-container-low rounded-2xl p-5 text-left mb-6" id="confirm-details"></div>
+    <a id="wa-btn" href="#" target="_blank" class="flex items-center justify-center gap-2 w-full py-3.5 rounded-full font-bold text-base mb-3" style="background:#25D366;color:white"><span class="material-symbols-outlined fill-icon">chat</span> Confirmar por WhatsApp</a>
+    <button onclick="restart()" class="w-full py-3.5 rounded-full font-bold text-base border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all">Hacer otro pedido</button>
+  </div>
+</div>
+
+<script>
+const { createClient } = supabase;
+const sb = createClient('https://kbnghtochxlhdhoipefy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibmdodG9jaHhsaGRob2lwZWZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNzk4ODQsImV4cCI6MjA5MTg1NTg4NH0.yg7Cxs3m-dcTihluyGGfimv1binxrN9uCDRgd3FpO7Q');
+
+const PACKS = [
+  {qty:5,  precio:14000, ppu:2800, label:"5 viandas",  sub:"Para la semana laboral"},
+  {qty:10, precio:26000, ppu:2600, label:"10 viandas", sub:"2 semanas · 5% de ahorro"},
+  {qty:15, precio:37500, ppu:2500, label:"15 viandas", sub:"Ideal para familias"},
+  {qty:20, precio:48000, ppu:2400, label:"20 viandas", sub:"Mejor precio por unidad"},
+];
+const HORARIOS = ["8:00 – 11:00","11:00 – 14:00","14:00 – 17:00","17:00 – 20:00"];
+
+let VIANDAS = [];
+let S = {packQty:null,packPrecio:null,viandas:[],entregaMode:'una',splitA:5,lunes1:null,lunes2:null,horario:null,pago:'transferencia',currentCat:'todas'};
+
+document.addEventListener('DOMContentLoaded', async () => {
+  renderPackList(); renderLunes(); renderHorarios();
+  await loadViandas();
+});
+
+async function loadViandas() {
+  renderMenuSkeleton();
+  const {data, error} = await sb.from('viandas').select('*').eq('activo',true).order('orden',{ascending:true});
+  if(error||!data||data.length===0){
+    document.getElementById('menu-preview').innerHTML=`<div class="col-span-2 text-center py-8 text-on-surface-variant text-sm"><span class="material-symbols-outlined text-3xl block mb-2">restaurant_menu</span>El menú de esta semana se publicará pronto.</div>`;
+    return;
+  }
+  VIANDAS = data;
+  const hoy = new Date();
+  document.getElementById('menu-fecha').textContent='Actualizado '+hoy.toLocaleDateString('es-AR',{day:'numeric',month:'long'});
+  renderMenuPreview(); renderCatFilters();
+}
+
+function renderMenuSkeleton() {
+  document.getElementById('menu-preview').innerHTML=Array.from({length:6}).map(()=>`<div class="rounded-2xl overflow-hidden border border-outline-variant/30"><div class="aspect-square skeleton"></div><div class="p-3 space-y-2"><div class="h-3 skeleton rounded w-3/4"></div><div class="h-2 skeleton rounded w-1/2"></div></div></div>`).join('');
+}
+function renderMenuPreview() {
+  document.getElementById('menu-preview').innerHTML=VIANDAS.slice(0,6).map(v=>`<div class="bg-white rounded-2xl overflow-hidden border border-outline-variant/30 hover:shadow-md transition-shadow"><div class="aspect-square bg-surface-container-low flex items-center justify-center text-5xl">${v.emoji||'🍽'}</div><div class="p-3"><p class="font-semibold text-sm leading-tight">${v.nombre}</p><p class="text-xs text-on-surface-variant mt-0.5">${v.descripcion||''}</p></div></div>`).join('');
+}
+function renderCatFilters() {
+  const cats=['todas',...new Set(VIANDAS.map(v=>v.categoria))];
+  document.getElementById('cat-filters').innerHTML=cats.map(c=>`<button onclick="filterCat('${c}')" class="cat-btn shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold ${c==='todas'?'bg-primary text-white':'bg-surface-container-high text-on-surface-variant'}">${c==='todas'?'Todas':c.charAt(0).toUpperCase()+c.slice(1)}</button>`).join('');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active'); window.scrollTo(0,0);
+  updateDots(id);
+  document.getElementById('cart-btn').style.display=['screen-viandas','screen-entrega'].includes(id)?'flex':'none';
+}
+function updateDots(id) {
+  const map={'screen-pack':1,'screen-viandas':2,'screen-entrega':3,'screen-checkout':4};
+  const step=map[id]??0, dots=document.getElementById('step-dots');
+  if(!step){dots.style.display='none';return;} dots.style.display='flex';
+  [1,2,3,4].forEach(i=>{const d=document.getElementById('dot-'+i);d.classList.remove('active','done');if(i===step)d.classList.add('active');else if(i<step)d.classList.add('done');});
+}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function fmtPesos(n){'use strict';return '$'+n.toLocaleString('es-AR');}
+function getMondays(n=6){const d=new Date(),res=[];d.setDate(d.getDate()+((8-d.getDay())%7||7));for(let i=0;i<n;i++){res.push(new Date(d));d.setDate(d.getDate()+7);}return res;}
+function fmtDate(d){return d?d.toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'}):'—';}
+function toISO(d){return d?d.toISOString().slice(0,10):null;}
+function setLoading(show,msg='Guardando tu pedido…'){document.getElementById('loading-msg').textContent=msg;document.getElementById('loading-overlay').classList.toggle('show',show);}
+
+function quickPack(qty){selectPack(qty);showScreen('screen-pack');}
+
+function renderPackList(){
+  document.getElementById('pack-list').innerHTML=PACKS.map(p=>`<div class="pack-card bg-white rounded-2xl p-4 border-2 border-outline-variant/40" data-qty="${p.qty}" onclick="selectPack(${p.qty})"><div class="flex justify-between items-start"><div><div class="flex items-center gap-2 mb-1"><span class="font-headline font-bold text-xl">${p.label}</span>${p.qty===20?'<span class="tag bg-secondary-fixed text-on-secondary-container">Mejor precio</span>':''}</div><p class="text-xs text-on-surface-variant">${p.sub}</p></div><div class="text-right"><div class="font-headline font-bold text-xl text-primary">${fmtPesos(p.precio)}</div><div class="text-xs text-on-surface-variant">${fmtPesos(p.ppu)} c/u</div></div></div><div class="mt-3 flex gap-1">${Array.from({length:p.qty}).map((_,i)=>`<div class="flex-1 h-1.5 rounded-full ${i<5?'bg-primary':'bg-surface-container-highest'}"></div>`).join('')}</div></div>`).join('');
+}
+function selectPack(qty){
+  S.packQty=qty;S.packPrecio=PACKS.find(p=>p.qty===qty).precio;S.viandas=[];S.splitA=Math.floor(qty/2);
+  document.querySelectorAll('.pack-card').forEach(c=>c.classList.toggle('selected',parseInt(c.dataset.qty)===qty));
+  document.getElementById('btn-pack-next').disabled=false;
+}
+function goToViandas(){
+  if(!S.packQty)return;
+  if(VIANDAS.length===0){showToast('El menú todavía no está cargado');return;}
+  S.viandas=[];document.getElementById('pack-qty-label').textContent=S.packQty;
+  showScreen('screen-viandas');renderViandasGrid();updateCounter();
+}
+
+function filterCat(cat){
+  S.currentCat=cat;
+  document.querySelectorAll('.cat-btn').forEach(b=>{const active=b.textContent.trim().toLowerCase()===cat||(cat==='todas'&&b.textContent.trim()==='Todas');b.className='cat-btn shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold '+(active?'bg-primary text-white':'bg-surface-container-high text-on-surface-variant');});
+  renderViandasGrid();
+}
+function renderViandasGrid(){
+  const list=S.currentCat==='todas'?VIANDAS:VIANDAS.filter(v=>v.categoria===S.currentCat);
+  if(!list.length){document.getElementById('viandas-grid').innerHTML=`<div class="col-span-2 text-center py-8 text-on-surface-variant text-sm">No hay viandas en esta categoría esta semana.</div>`;return;}
+  document.getElementById('viandas-grid').innerHTML=list.map(v=>{const cnt=S.viandas.filter(id=>id===v.id).length;return `<div class="vianda-card bg-white rounded-2xl overflow-hidden border border-outline-variant/30 ${cnt?'added':''}"><div class="aspect-square bg-surface-container-low flex items-center justify-center text-5xl relative">${v.emoji||'🍽'}${cnt?`<div class="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold">${cnt}</div>`:''}</div><div class="p-3"><p class="font-semibold text-sm leading-tight mb-0.5">${v.nombre}</p><p class="text-xs text-on-surface-variant mb-2">${v.descripcion||''}</p><div class="flex items-center gap-1">${cnt?`<button onclick="removeVianda(${v.id})" class="w-7 h-7 rounded-full border border-outline-variant flex items-center justify-center font-bold text-sm hover:bg-surface-container">-</button>`:''}<button onclick="addVianda(${v.id})" class="w-7 h-7 rounded-full ${cnt?'bg-primary text-white':'border border-outline-variant hover:bg-surface-container'} flex items-center justify-center font-bold text-sm">+</button></div></div></div>`;}).join('');
+}
+function addVianda(id){if(S.viandas.length>=S.packQty){showToast(`Tu pack es de ${S.packQty} viandas`);return;}S.viandas.push(id);updateCounter();renderViandasGrid();}
+function removeVianda(id){const i=S.viandas.lastIndexOf(id);if(i>-1)S.viandas.splice(i,1);updateCounter();renderViandasGrid();}
+function updateCounter(){
+  const c=S.viandas.length,t=S.packQty;
+  document.getElementById('counter-label').textContent=`${c} / ${t}`;
+  document.getElementById('counter-bar').style.width=(c/t*100)+'%';
+  document.getElementById('counter-bar').style.background=c===t?'#1D9E75':'#005145';
+  document.getElementById('btn-viandas-next').disabled=c<t;
+  document.getElementById('cart-count').textContent=c;
+  if(c===t)showToast('¡Pack completo! Podés continuar.');
+}
+
+function setupEntrega(){
+  const ns=S.packQty>5;document.getElementById('entrega-split-section').style.display=ns?'block':'none';
+  S.entregaMode='una';S.lunes1=null;S.lunes2=null;S.horario=null;
+  if(ns){document.getElementById('split-a').textContent=S.splitA;document.getElementById('split-b').textContent=S.packQty-S.splitA;document.getElementById('split-total').textContent=S.packQty;}
+  setEntregaMode('una');
+}
+function setEntregaMode(mode){
+  S.entregaMode=mode;S.lunes1=null;S.lunes2=null;
+  const base='flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all';
+  const bU=document.getElementById('btn-una'),bD=document.getElementById('btn-dos');
+  if(mode==='una'){bU.className=base+' border-primary bg-primary/5 text-primary';bD.className=base+' border-outline-variant text-on-surface-variant';document.getElementById('split-selector').style.display='none';document.getElementById('lunes-container-2').style.display='none';document.getElementById('lunes-label-1').textContent='Elegí el lunes de entrega';}
+  else{bD.className=base+' border-primary bg-primary/5 text-primary';bU.className=base+' border-outline-variant text-on-surface-variant';document.getElementById('split-selector').style.display='block';document.getElementById('lunes-container-2').style.display='block';document.getElementById('lunes-label-1').textContent='Primer lunes de entrega';}
+  document.querySelectorAll('.lunes-slot').forEach(s=>s.classList.remove('selected'));checkEntregaOk();
+}
+function changeSplit(d){S.splitA=Math.min(S.packQty-1,Math.max(1,S.splitA+d));document.getElementById('split-a').textContent=S.splitA;document.getElementById('split-b').textContent=S.packQty-S.splitA;}
+function renderLunes(){
+  const ms=getMondays();
+  ['lunes-grid-1','lunes-grid-2'].forEach((gid,gi)=>{document.getElementById(gid).innerHTML=ms.map((m,i)=>`<div class="lunes-slot rounded-xl p-2.5 text-center" data-g="${gi+1}" data-i="${i}" onclick="selectLunes(${gi+1},${i})"><p class="text-xs font-semibold text-primary capitalize">${m.toLocaleDateString('es-AR',{weekday:'short'})}</p><p class="font-headline font-bold text-base">${m.getDate()}</p><p class="text-xs text-on-surface-variant">${m.toLocaleDateString('es-AR',{month:'short'})}</p></div>`).join('');});
+}
+function selectLunes(g,idx){
+  const ms=getMondays();
+  if(g===1){S.lunes1=ms[idx];if(S.entregaMode==='dos'){S.lunes2=ms[idx+1]||ms[idx];document.querySelectorAll('[data-g="2"]').forEach(s=>s.classList.toggle('selected',parseInt(s.dataset.i)===idx+1));}}
+  else{S.lunes2=ms[idx];}
+  document.querySelectorAll(`[data-g="${g}"]`).forEach(s=>s.classList.toggle('selected',parseInt(s.dataset.i)===idx));checkEntregaOk();
+}
+function renderHorarios(){document.getElementById('horario-grid').innerHTML=HORARIOS.map((h,i)=>`<div class="lunes-slot rounded-xl p-3 text-center" data-g="h" data-i="${i}" onclick="selHorario(${i},this)"><p class="text-sm font-semibold">${h}</p></div>`).join('');}
+function selHorario(i,el){S.horario=HORARIOS[i];document.querySelectorAll('[data-g="h"]').forEach(s=>s.classList.remove('selected'));el.classList.add('selected');checkEntregaOk();}
+function checkEntregaOk(){document.getElementById('btn-entrega-next').disabled=!(S.lunes1&&S.horario&&(S.entregaMode==='una'||S.lunes2));}
+
+function renderCheckout(){
+  const pack=PACKS.find(p=>p.qty===S.packQty);const counts={};S.viandas.forEach(id=>{counts[id]=(counts[id]||0)+1;});
+  let html=`<div class="flex justify-between"><span class="text-on-surface-variant">Pack</span><span class="font-semibold">${pack.label}</span></div><div class="border-t border-outline-variant/30 my-2"></div>`;
+  Object.entries(counts).forEach(([id,qty])=>{const v=VIANDAS.find(x=>x.id===parseInt(id));html+=`<div class="flex justify-between"><span class="text-on-surface-variant">${v.emoji||'🍽'} ${v.nombre}${qty>1?` x${qty}`:''}</span></div>`;});
+  html+=`<div class="border-t border-outline-variant/30 my-2"></div><div class="flex justify-between"><span class="text-on-surface-variant">Entrega</span><span class="font-semibold">${fmtDate(S.lunes1)}</span></div>`;
+  if(S.entregaMode==='dos')html+=`<div class="flex justify-between"><span class="text-on-surface-variant">2da entrega</span><span class="font-semibold">${fmtDate(S.lunes2)}</span></div>`;
+  html+=`<div class="flex justify-between"><span class="text-on-surface-variant">Horario</span><span class="font-semibold">${S.horario}</span></div>`;
+  document.getElementById('checkout-summary').innerHTML=html;
+  const total=pack.precio+(S.entregaMode==='dos'?500:0);
+  document.getElementById('t-pack').textContent=fmtPesos(pack.precio);
+  document.getElementById('t-total').textContent=fmtPesos(total);
+  document.getElementById('t-extra-row').style.display=S.entregaMode==='dos'?'flex':'none';
+}
+function selectPago(el,method){S.pago=method;document.querySelectorAll('.pago-opt').forEach(o=>{o.classList.remove('selected');o.querySelector('input').checked=false;});el.classList.add('selected');el.querySelector('input').checked=true;}
+
+async function confirmOrder(){
+  const nombre=document.getElementById('f-nombre').value.trim(),tel=document.getElementById('f-tel').value.trim(),dir=document.getElementById('f-dir').value.trim(),barrio=document.getElementById('f-barrio').value.trim();
+  if(!nombre||!tel||!dir){showToast('Completá nombre, teléfono y dirección');return;}
+  const pack=PACKS.find(p=>p.qty===S.packQty),total=pack.precio+(S.entregaMode==='dos'?500:0),numero='VDX-'+Date.now().toString().slice(-5);
+  const counts={};S.viandas.forEach(id=>{counts[id]=(counts[id]||0)+1;});
+  const viandasObj=Object.entries(counts).map(([id,qty])=>({id:parseInt(id),nombre:VIANDAS.find(v=>v.id===parseInt(id)).nombre,qty}));
+  const pedido={numero,nombre,telefono:tel,direccion:dir,barrio,pack_qty:S.packQty,pack_precio:pack.precio,viandas:viandasObj,entrega_modo:S.entregaMode,lunes1:toISO(S.lunes1),lunes2:S.entregaMode==='dos'?toISO(S.lunes2):null,split_a:S.entregaMode==='dos'?S.splitA:null,horario:S.horario,pago_method:S.pago,total,estado:'pendiente'};
+  setLoading(true,'Guardando tu pedido…');
+  try{const{error}=await sb.from('pedidos').insert([pedido]);if(error)throw error;buildConfirm(pedido,tel,dir,total,numero,viandasObj);showScreen('screen-confirm');}
+  catch(err){console.error(err);showToast('Error al guardar el pedido. Intentá de nuevo.');}
+  finally{setLoading(false);}
+}
+function buildConfirm(pedido,tel,dir,total,numero,viandasObj){
+  const vList=viandasObj.map(v=>`${VIANDAS.find(x=>x.id===v.id)?.emoji||'🍽'} ${v.nombre}${v.qty>1?` x${v.qty}`:''}`).join(', ');
+  document.getElementById('confirm-msg').textContent=`Pedido #${numero} · Te contactamos al ${tel}`;
+  document.getElementById('confirm-details').innerHTML=`<div class="space-y-2 text-sm"><div class="flex justify-between"><span class="text-on-surface-variant">Pack</span><span class="font-semibold">${pedido.pack_qty} viandas</span></div><div class="flex justify-between"><span class="text-on-surface-variant">Viandas</span><span class="font-semibold text-right max-w-[60%] leading-snug">${vList}</span></div><div class="flex justify-between"><span class="text-on-surface-variant">1er entrega</span><span class="font-semibold">${fmtDate(S.lunes1)} · ${S.horario}</span></div>${S.entregaMode==='dos'?`<div class="flex justify-between"><span class="text-on-surface-variant">2da entrega</span><span class="font-semibold">${fmtDate(S.lunes2)} · ${S.horario}</span></div>`:''}<div class="flex justify-between"><span class="text-on-surface-variant">Dirección</span><span class="font-semibold">${dir}</span></div><div class="flex justify-between"><span class="text-on-surface-variant">Pago</span><span class="font-semibold capitalize">${pedido.pago_method}</span></div><div class="border-t border-outline-variant/30 pt-2 flex justify-between"><span class="font-bold">Total</span><span class="font-headline font-bold text-primary">${fmtPesos(total)}</span></div></div>`;
+  const msg=encodeURIComponent(`Hola! Quiero confirmar mi pedido Viandix 🌿\n\n📦 Pack: ${pedido.pack_qty} viandas\n🍽 Viandas: ${vList}\n📅 Entrega: ${fmtDate(S.lunes1)} · ${S.horario}\n${S.entregaMode==='dos'?`📅 2da entrega: ${fmtDate(S.lunes2)}\n`:''}📍 Dirección: ${dir}\n💳 Pago: ${pedido.pago_method}\n💰 Total: ${fmtPesos(total)}\n\nPedido #${numero}`);
+  document.getElementById('wa-btn').href=`https://wa.me/5493800000000?text=${msg}`;
+}
+function restart(){S={packQty:null,packPrecio:null,viandas:[],entregaMode:'una',splitA:5,lunes1:null,lunes2:null,horario:null,pago:'transferencia',currentCat:'todas'};showScreen('screen-catalog');}
+</script>
+</body>
+</html>

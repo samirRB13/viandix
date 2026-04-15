@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin · Viandix</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+* { box-sizing:border-box; }
+body { font-family:'Inter',sans-serif; background:#f4f3f1; color:#1a1c1b; }
+.font-headline { font-family:'Plus Jakarta Sans',sans-serif; }
+.material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; vertical-align:middle; }
+.fill-icon { font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24; }
+
+#login-screen { position:fixed;inset:0;background:#faf9f7;display:flex;align-items:center;justify-content:center;z-index:999; }
+#login-screen.hidden { display:none; }
+
+/* Tabs */
+.tab-btn { padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;border:none;background:transparent; }
+.tab-btn.active { background:#005145;color:white; }
+.tab-btn:not(.active) { color:#3f4946; }
+.tab-btn:not(.active):hover { background:#efeeec; }
+
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* Table */
+table { border-collapse:collapse;width:100%; }
+th { background:#efeeec;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#3f4946;padding:10px 14px;text-align:left; }
+td { padding:12px 14px;border-bottom:1px solid #e9e8e6;font-size:13px;vertical-align:top; }
+tr:hover td { background:#faf9f7; }
+.estado-sel { border:1px solid #bec9c5;border-radius:8px;padding:4px 8px;font-size:12px;font-family:'Inter',sans-serif;background:white;cursor:pointer;outline:none; }
+.estado-sel:focus { border-color:#005145; }
+
+/* Vianda card en menú */
+.vianda-row { background:white;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;border:1px solid #e9e8e6;transition:all .15s; }
+.vianda-row:hover { box-shadow:0 2px 12px rgba(0,0,0,.06); }
+.vianda-row.inactivo { opacity:.5; }
+
+/* Toggle switch */
+.toggle { position:relative;width:40px;height:22px;flex-shrink:0; }
+.toggle input { opacity:0;width:0;height:0; }
+.toggle-slider { position:absolute;inset:0;background:#bec9c5;border-radius:11px;cursor:pointer;transition:.2s; }
+.toggle-slider:before { content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s; }
+.toggle input:checked + .toggle-slider { background:#005145; }
+.toggle input:checked + .toggle-slider:before { transform:translateX(18px); }
+
+/* Modal */
+.modal-bg { position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:none;align-items:center;justify-content:center;padding:16px; }
+.modal-bg.show { display:flex; }
+.modal { background:white;border-radius:20px;padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto; }
+
+.field { width:100%;padding:10px 14px;border:1.5px solid #bec9c5;border-radius:10px;font-size:14px;outline:none;transition:border-color .2s;font-family:'Inter',sans-serif;background:white; }
+.field:focus { border-color:#005145; }
+.field-label { font-size:12px;font-weight:600;color:#3f4946;margin-bottom:4px;display:block; }
+
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.fade-in { animation:fadeIn .25s ease both; }
+
+#toast { position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(16px);background:#1a1c1b;color:white;padding:10px 20px;border-radius:9999px;font-size:13px;font-weight:500;opacity:0;transition:all .3s ease;pointer-events:none;z-index:9999;white-space:nowrap; }
+#toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="bg-white rounded-3xl shadow-xl p-10 w-full max-w-sm mx-4">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <span class="material-symbols-outlined fill-icon text-4xl text-green-800">restaurant</span>
+      </div>
+      <h1 class="font-headline font-bold text-2xl">Viandix</h1>
+      <p class="text-sm text-gray-500 mt-1">Panel de administración</p>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Contraseña</label>
+        <input id="pwd-input" type="password" placeholder="••••••••" class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-green-700 transition-colors" onkeydown="if(event.key==='Enter')tryLogin()"/>
+      </div>
+      <p id="login-err" class="text-xs text-red-600 hidden">Contraseña incorrecta</p>
+      <button onclick="tryLogin()" class="w-full py-3 bg-green-900 text-white rounded-xl font-semibold hover:bg-green-800 transition-colors">Ingresar</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden min-h-screen">
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="font-headline font-bold text-xl text-green-900">Viandix</span>
+        <span class="text-xs font-semibold bg-green-50 text-green-800 px-2.5 py-1 rounded-full">Admin</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="loadAll()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 transition-colors">
+          <span class="material-symbols-outlined text-base">refresh</span> Actualizar
+        </button>
+        <button onclick="logout()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors">
+          <span class="material-symbols-outlined text-base">logout</span>
+        </button>
+      </div>
+    </div>
+    <!-- Tabs -->
+    <div class="max-w-6xl mx-auto px-6 pb-3 flex gap-2">
+      <button class="tab-btn active" onclick="switchTab('pedidos')">
+        <span class="material-symbols-outlined text-base mr-1">receipt_long</span>Pedidos
+        <span id="badge-pendientes" class="ml-1.5 bg-amber-100 text-amber-800 text-xs font-bold px-1.5 py-0.5 rounded-full">0</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('menu')">
+        <span class="material-symbols-outlined text-base mr-1">restaurant_menu</span>Menú semanal
+      </button>
+    </div>
+  </header>
+
+  <div class="max-w-6xl mx-auto px-6 py-6">
+
+    <!-- ===== TAB: PEDIDOS ===== -->
+    <div id="tab-pedidos" class="tab-panel active">
+      <!-- Stats -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-2xl p-4"><p class="text-xs font-semibold text-gray-500 mb-1">Total pedidos</p><p class="font-headline font-bold text-3xl" id="s-total">—</p></div>
+        <div class="bg-white rounded-2xl p-4"><p class="text-xs font-semibold text-gray-500 mb-1">Pendientes</p><p class="font-headline font-bold text-3xl text-amber-700" id="s-pendiente">—</p></div>
+        <div class="bg-white rounded-2xl p-4"><p class="text-xs font-semibold text-gray-500 mb-1">Preparando</p><p class="font-headline font-bold text-3xl text-blue-700" id="s-preparando">—</p></div>
+        <div class="bg-white rounded-2xl p-4"><p class="text-xs font-semibold text-gray-500 mb-1">Enviados</p><p class="font-headline font-bold text-3xl text-green-700" id="s-enviado">—</p></div>
+      </div>
+      <!-- Filtros -->
+      <div class="bg-white rounded-2xl p-4 mb-4 flex flex-wrap gap-3 items-center">
+        <div class="flex gap-2 flex-wrap">
+          <button onclick="filterEstado('todos')"      class="f-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-900 text-white">Todos</button>
+          <button onclick="filterEstado('pendiente')"  class="f-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200">Pendientes</button>
+          <button onclick="filterEstado('preparando')" class="f-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200">Preparando</button>
+          <button onclick="filterEstado('enviado')"    class="f-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200">Enviados</button>
+          <button onclick="filterEstado('entregado')"  class="f-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200">Entregados</button>
+        </div>
+        <div class="ml-auto flex items-center gap-2">
+          <label class="text-xs font-semibold text-gray-500">Lunes:</label>
+          <input type="date" id="filter-date" class="text-xs border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-green-700" onchange="applyFilters()"/>
+          <button onclick="document.getElementById('filter-date').value='';applyFilters()" class="text-xs text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+      </div>
+      <!-- Tabla -->
+      <div class="bg-white rounded-2xl overflow-hidden shadow-sm">
+        <div id="loading-pedidos" class="py-16 text-center text-gray-400"><div class="inline-block w-8 h-8 border-2 border-gray-200 border-t-green-700 rounded-full animate-spin mb-3"></div><p class="text-sm">Cargando pedidos…</p></div>
+        <div id="empty-pedidos" class="hidden py-16 text-center text-gray-400"><span class="material-symbols-outlined text-5xl mb-3 block">inbox</span><p class="text-sm">No hay pedidos con ese filtro.</p></div>
+        <div class="overflow-x-auto" id="table-wrap" style="display:none">
+          <table>
+            <thead><tr><th>#</th><th>Cliente</th><th>Pack</th><th>Viandas</th><th>Entrega</th><th>Horario</th><th>Total</th><th>Pago</th><th>Estado</th></tr></thead>
+            <tbody id="pedidos-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: MENÚ ===== -->
+    <div id="tab-menu" class="tab-panel">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="font-headline font-bold text-xl">Menú semanal</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Activá o desactivá viandas, editá precios y agregá nuevas. Los cambios se ven en la app al instante.</p>
+        </div>
+        <button onclick="openModalVianda(null)" class="flex items-center gap-2 px-4 py-2.5 bg-green-900 text-white rounded-xl font-semibold text-sm hover:bg-green-800 transition-colors">
+          <span class="material-symbols-outlined text-base">add</span> Nueva vianda
+        </button>
+      </div>
+
+      <!-- Filtro categoría -->
+      <div class="flex gap-2 mb-4 flex-wrap">
+        <button onclick="filterMenuCat('todas')"       class="mc-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-900 text-white">Todas</button>
+        <button onclick="filterMenuCat('carnes')"      class="mc-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200">Carnes</button>
+        <button onclick="filterMenuCat('pastas')"      class="mc-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200">Pastas</button>
+        <button onclick="filterMenuCat('vegetariano')" class="mc-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200">Vegetariano</button>
+        <button onclick="filterMenuCat('sopas')"       class="mc-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200">Sopas</button>
+      </div>
+
+      <div id="loading-menu" class="py-16 text-center text-gray-400"><div class="inline-block w-8 h-8 border-2 border-gray-200 border-t-green-700 rounded-full animate-spin mb-3"></div><p class="text-sm">Cargando menú…</p></div>
+      <div id="viandas-list" class="space-y-2"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: Nueva / Editar vianda -->
+<div class="modal-bg" id="modal-vianda">
+  <div class="modal fade-in">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-headline font-bold text-lg" id="modal-title">Nueva vianda</h3>
+      <button onclick="closeModal()" class="text-gray-400 hover:text-gray-700"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="space-y-4">
+      <div><label class="field-label">Nombre *</label><input id="m-nombre" type="text" class="field" placeholder="Ej: Locro de la Abuela"/></div>
+      <div><label class="field-label">Descripción</label><input id="m-desc" type="text" class="field" placeholder="Ingredientes principales, porciones…"/></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="field-label">Categoría *</label>
+          <select id="m-cat" class="field">
+            <option value="carnes">Carnes</option>
+            <option value="pastas">Pastas</option>
+            <option value="vegetariano">Vegetariano</option>
+            <option value="sopas">Sopas</option>
+          </select>
+        </div>
+        <div><label class="field-label">Emoji</label><input id="m-emoji" type="text" class="field" placeholder="🍲" maxlength="4"/></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="field-label">Precio ($) *</label><input id="m-precio" type="number" class="field" placeholder="3500"/></div>
+        <div><label class="field-label">Orden (menor = primero)</label><input id="m-orden" type="number" class="field" placeholder="0"/></div>
+      </div>
+      <div class="flex items-center gap-3 pt-1">
+        <label class="toggle"><input type="checkbox" id="m-activo" checked/><span class="toggle-slider"></span></label>
+        <span class="text-sm font-medium">Visible en la app esta semana</span>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeModal()" class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold hover:bg-gray-50 transition-colors">Cancelar</button>
+      <button onclick="saveVianda()" id="btn-save-vianda" class="flex-1 py-2.5 rounded-xl bg-green-900 text-white text-sm font-semibold hover:bg-green-800 transition-colors">Guardar</button>
+    </div>
+    <button id="btn-delete-vianda" onclick="deleteVianda()" class="w-full mt-3 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors" style="display:none">
+      <span class="material-symbols-outlined text-base mr-1">delete</span>Eliminar vianda
+    </button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const { createClient } = supabase;
+const sb = createClient('https://kbnghtochxlhdhoipefy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibmdodG9jaHhsaGRob2lwZWZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNzk4ODQsImV4cCI6MjA5MTg1NTg4NH0.yg7Cxs3m-dcTihluyGGfimv1binxrN9uCDRgd3FpO7Q');
+
+const ADMIN_PWD = 'viandix2025';
+let allPedidos = [], allViandas = [], currentFilter = 'todos', currentMenuCat = 'todas', editingId = null;
+
+// ===== LOGIN =====
+function tryLogin(){
+  if(document.getElementById('pwd-input').value===ADMIN_PWD){
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    setNextMonday();
+    loadAll();
+  } else {
+    document.getElementById('login-err').classList.remove('hidden');
+    document.getElementById('pwd-input').value='';
+    document.getElementById('pwd-input').focus();
+  }
+}
+function logout(){document.getElementById('login-screen').classList.remove('hidden');document.getElementById('app').classList.add('hidden');document.getElementById('pwd-input').value='';}
+
+function setNextMonday(){
+  const d=new Date();d.setDate(d.getDate()+((8-d.getDay())%7||7));
+  document.getElementById('filter-date').value=d.toISOString().slice(0,10);
+}
+
+async function loadAll(){ await Promise.all([loadPedidos(), loadViandas()]); }
+
+// ===== TABS =====
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',b.textContent.includes(tab==='pedidos'?'Pedidos':'Menú')));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+}
+
+// ===== PEDIDOS =====
+async function loadPedidos(){
+  document.getElementById('loading-pedidos').style.display='block';
+  document.getElementById('table-wrap').style.display='none';
+  document.getElementById('empty-pedidos').classList.add('hidden');
+  const{data,error}=await sb.from('pedidos').select('*').order('created_at',{ascending:false});
+  if(error){showToast('Error al cargar pedidos');return;}
+  allPedidos=data||[];updateStats();applyFilters();
+  document.getElementById('loading-pedidos').style.display='none';
+}
+function updateStats(){
+  document.getElementById('s-total').textContent=allPedidos.length;
+  document.getElementById('s-pendiente').textContent=allPedidos.filter(p=>p.estado==='pendiente').length;
+  document.getElementById('s-preparando').textContent=allPedidos.filter(p=>p.estado==='preparando').length;
+  document.getElementById('s-enviado').textContent=allPedidos.filter(p=>p.estado==='enviado').length;
+  document.getElementById('badge-pendientes').textContent=allPedidos.filter(p=>p.estado==='pendiente').length;
+}
+function filterEstado(e){
+  currentFilter=e;
+  document.querySelectorAll('.f-btn').forEach(b=>{
+    const active=(e==='todos'&&b.textContent.trim()==='Todos')||(e!=='todos'&&b.textContent.trim().toLowerCase().startsWith(e.slice(0,5)));
+    b.className='f-btn px-3 py-1.5 rounded-lg text-xs font-semibold '+(active?'bg-green-900 text-white':'bg-gray-100 text-gray-600 hover:bg-gray-200');
+  });
+  applyFilters();
+}
+function applyFilters(){
+  const df=document.getElementById('filter-date').value;
+  let f=allPedidos;
+  if(currentFilter!=='todos') f=f.filter(p=>p.estado===currentFilter);
+  if(df) f=f.filter(p=>p.lunes1===df||p.lunes2===df);
+  if(!f.length){document.getElementById('table-wrap').style.display='none';document.getElementById('empty-pedidos').classList.remove('hidden');return;}
+  document.getElementById('empty-pedidos').classList.add('hidden');document.getElementById('table-wrap').style.display='block';
+  document.getElementById('pedidos-tbody').innerHTML=f.map(p=>{
+    const vList=(p.viandas||[]).map(v=>`<span class="inline-block bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5 text-xs mr-1 mb-1">${v.nombre}${v.qty>1?` ×${v.qty}`:''}</span>`).join('');
+    const e2=p.lunes2?`<br/><span class="text-xs text-gray-400">2da: ${fmtDate(p.lunes2)}</span>`:'';
+    const modo=p.entrega_modo==='dos'?'<span class="text-xs text-blue-600 font-semibold"> (2 envíos)</span>':'';
+    return `<tr class="fade-in"><td class="font-mono text-xs text-gray-500 whitespace-nowrap">${p.numero||'—'}</td><td><p class="font-semibold">${p.nombre}</p><p class="text-xs text-gray-500">${p.telefono}</p><p class="text-xs text-gray-400">${p.direccion}${p.barrio?', '+p.barrio:''}</p></td><td class="font-semibold text-green-900 whitespace-nowrap">${p.pack_qty} viandas</td><td class="max-w-xs">${vList}</td><td class="whitespace-nowrap">${fmtDate(p.lunes1)}${modo}${e2}</td><td class="whitespace-nowrap text-sm">${p.horario||'—'}</td><td class="font-semibold whitespace-nowrap">${fmtPesos(p.total)}</td><td class="capitalize text-sm text-gray-600">${p.pago_method||'—'}</td><td><select class="estado-sel" onchange="updateEstado(${p.id},this.value)"><option value="pendiente" ${p.estado==='pendiente'?'selected':''}>Pendiente</option><option value="preparando" ${p.estado==='preparando'?'selected':''}>Preparando</option><option value="enviado" ${p.estado==='enviado'?'selected':''}>Enviado</option><option value="entregado" ${p.estado==='entregado'?'selected':''}>Entregado</option></select></td></tr>`;
+  }).join('');
+}
+async function updateEstado(id,estado){
+  const{error}=await sb.from('pedidos').update({estado}).eq('id',id);
+  if(error){showToast('Error al actualizar');return;}
+  const p=allPedidos.find(x=>x.id===id);if(p)p.estado=estado;updateStats();showToast('Estado actualizado');
+}
+
+// ===== MENÚ =====
+async function loadViandas(){
+  document.getElementById('loading-menu').style.display='block';
+  const{data,error}=await sb.from('viandas').select('*').order('orden',{ascending:true});
+  if(error){showToast('Error al cargar menú');return;}
+  allViandas=data||[];
+  document.getElementById('loading-menu').style.display='none';
+  renderViandasList();
+}
+function filterMenuCat(cat){
+  currentMenuCat=cat;
+  document.querySelectorAll('.mc-btn').forEach(b=>{
+    const active=(cat==='todas'&&b.textContent.trim()==='Todas')||(cat!=='todas'&&b.textContent.trim().toLowerCase()===cat);
+    b.className='mc-btn px-3 py-1.5 rounded-lg text-xs font-semibold '+(active?'bg-green-900 text-white':'bg-gray-100 text-gray-600 hover:bg-gray-200');
+  });
+  renderViandasList();
+}
+function renderViandasList(){
+  const list=currentMenuCat==='todas'?allViandas:allViandas.filter(v=>v.categoria===currentMenuCat);
+  if(!list.length){document.getElementById('viandas-list').innerHTML=`<div class="py-12 text-center text-gray-400 text-sm">No hay viandas en esta categoría.</div>`;return;}
+  document.getElementById('viandas-list').innerHTML=list.map(v=>`
+    <div class="vianda-row ${v.activo?'':'inactivo'}">
+      <div class="text-3xl w-10 text-center flex-shrink-0">${v.emoji||'🍽'}</div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <p class="font-semibold text-sm">${v.nombre}</p>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">${v.categoria}</span>
+          ${!v.activo?'<span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">Oculto</span>':''}
+        </div>
+        <p class="text-xs text-gray-500 truncate">${v.descripcion||'Sin descripción'}</p>
+      </div>
+      <div class="text-sm font-bold text-green-900 mr-4 whitespace-nowrap">${fmtPesos(v.precio)}</div>
+      <label class="toggle mr-3" title="${v.activo?'Desactivar':'Activar'}">
+        <input type="checkbox" ${v.activo?'checked':''} onchange="toggleActivo(${v.id},this.checked)"/>
+        <span class="toggle-slider"></span>
+      </label>
+      <button onclick="openModalVianda(${v.id})" class="p-2 text-gray-400 hover:text-gray-700 transition-colors">
+        <span class="material-symbols-outlined text-base">edit</span>
+      </button>
+    </div>`).join('');
+}
+
+async function toggleActivo(id, activo){
+  const{error}=await sb.from('viandas').update({activo}).eq('id',id);
+  if(error){showToast('Error al actualizar');return;}
+  const v=allViandas.find(x=>x.id===id);if(v)v.activo=activo;
+  renderViandasList();showToast(activo?'Vianda activada en el menú':'Vianda ocultada del menú');
+}
+
+// ===== MODAL =====
+function openModalVianda(id){
+  editingId=id;
+  const modal=document.getElementById('modal-vianda');
+  const delBtn=document.getElementById('btn-delete-vianda');
+  if(id){
+    const v=allViandas.find(x=>x.id===id);
+    document.getElementById('modal-title').textContent='Editar vianda';
+    document.getElementById('m-nombre').value=v.nombre||'';
+    document.getElementById('m-desc').value=v.descripcion||'';
+    document.getElementById('m-cat').value=v.categoria||'carnes';
+    document.getElementById('m-emoji').value=v.emoji||'';
+    document.getElementById('m-precio').value=v.precio||'';
+    document.getElementById('m-orden').value=v.orden||0;
+    document.getElementById('m-activo').checked=v.activo;
+    delBtn.style.display='block';
+  } else {
+    document.getElementById('modal-title').textContent='Nueva vianda';
+    document.getElementById('m-nombre').value='';
+    document.getElementById('m-desc').value='';
+    document.getElementById('m-cat').value='carnes';
+    document.getElementById('m-emoji').value='';
+    document.getElementById('m-precio').value='';
+    document.getElementById('m-orden').value=0;
+    document.getElementById('m-activo').checked=true;
+    delBtn.style.display='none';
+  }
+  modal.classList.add('show');
+}
+function closeModal(){document.getElementById('modal-vianda').classList.remove('show');}
+
+async function saveVianda(){
+  const nombre=document.getElementById('m-nombre').value.trim();
+  const precio=parseInt(document.getElementById('m-precio').value);
+  if(!nombre||!precio){showToast('Completá nombre y precio');return;}
+  const vianda={
+    nombre, descripcion:document.getElementById('m-desc').value.trim(),
+    categoria:document.getElementById('m-cat').value,
+    emoji:document.getElementById('m-emoji').value.trim()||'🍽',
+    precio, orden:parseInt(document.getElementById('m-orden').value)||0,
+    activo:document.getElementById('m-activo').checked,
+  };
+  const btn=document.getElementById('btn-save-vianda');
+  btn.textContent='Guardando…'; btn.disabled=true;
+  let error;
+  if(editingId){ ({error}=await sb.from('viandas').update(vianda).eq('id',editingId)); }
+  else { ({error}=await sb.from('viandas').insert([vianda])); }
+  btn.textContent='Guardar'; btn.disabled=false;
+  if(error){showToast('Error: '+error.message);return;}
+  closeModal(); await loadViandas(); showToast(editingId?'Vianda actualizada':'Vianda agregada al menú');
+}
+
+async function deleteVianda(){
+  if(!confirm('¿Eliminar esta vianda permanentemente?'))return;
+  const{error}=await sb.from('viandas').delete().eq('id',editingId);
+  if(error){showToast('Error al eliminar');return;}
+  closeModal(); await loadViandas(); showToast('Vianda eliminada');
+}
+
+// ===== UTILS =====
+function fmtPesos(n){return '$'+(n||0).toLocaleString('es-AR');}
+function fmtDate(str){if(!str)return '—';const d=new Date(str+'T12:00:00');return d.toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+
+document.getElementById('modal-vianda').addEventListener('click',function(e){if(e.target===this)closeModal();});
+</script>
+</body>
+</html>
