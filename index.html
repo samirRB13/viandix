@@ -512,7 +512,15 @@ function renderMenuSkeleton() {
   document.getElementById('menu-preview').innerHTML=Array.from({length:6}).map(()=>`<div class="rounded-2xl overflow-hidden border border-outline-variant/30"><div class="aspect-square skeleton"></div><div class="p-3 space-y-2"><div class="h-3 skeleton rounded w-3/4"></div><div class="h-2 skeleton rounded w-1/2"></div></div></div>`).join('');
 }
 function renderMenuPreview() {
-  document.getElementById('menu-preview').innerHTML=VIANDAS.slice(0,6).map(v=>`<div class="bg-white rounded-2xl overflow-hidden border border-outline-variant/30 hover:shadow-md transition-shadow"><div class="aspect-square bg-surface-container-low flex items-center justify-center text-5xl">${v.emoji||'🍽'}</div><div class="p-3"><p class="font-semibold text-sm leading-tight">${v.nombre}</p><p class="text-xs text-on-surface-variant mt-0.5">${v.descripcion||''}</p></div></div>`).join('');
+  document.getElementById('menu-preview').innerHTML=VIANDAS.slice(0,6).map(v=>{
+    const fotoUrl=v.foto_url?`https://kbnghtochxlhdhoipefy.supabase.co/storage/v1/object/public/viandas-fotos/${v.foto_url}`:null;
+    return `<div class="bg-white rounded-2xl overflow-hidden border border-outline-variant/30 hover:shadow-md transition-shadow">
+      <div class="aspect-square bg-surface-container-low flex items-center justify-center text-5xl overflow-hidden">
+        ${fotoUrl?`<img src="${fotoUrl}" class="w-full h-full object-cover" alt="${v.nombre}"/>`:`<span>${v.emoji||'🍽'}</span>`}
+      </div>
+      <div class="p-3"><p class="font-semibold text-sm leading-tight">${v.nombre}</p><p class="text-xs text-on-surface-variant mt-0.5">${v.descripcion||''}</p></div>
+    </div>`;
+  }).join('');
 }
 function renderCatFilters() {
   const cats=['todas',...new Set(VIANDAS.map(v=>v.categoria))];
@@ -583,7 +591,59 @@ function filterCat(cat){
 function renderViandasGrid(){
   const list=S.currentCat==='todas'?VIANDAS:VIANDAS.filter(v=>v.categoria===S.currentCat);
   if(!list.length){document.getElementById('viandas-grid').innerHTML=`<div class="col-span-2 text-center py-8 text-on-surface-variant text-sm">No hay viandas en esta categoría esta semana.</div>`;return;}
-  document.getElementById('viandas-grid').innerHTML=list.map(v=>{const cnt=S.viandas.filter(id=>id===v.id).length;return `<div class="vianda-card bg-white rounded-2xl overflow-hidden border border-outline-variant/30 ${cnt?'added':''}"><div class="aspect-square bg-surface-container-low flex items-center justify-center text-5xl relative">${v.emoji||'🍽'}${cnt?`<div class="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold">${cnt}</div>`:''}</div><div class="p-3"><p class="font-semibold text-sm leading-tight mb-0.5">${v.nombre}</p><p class="text-xs text-on-surface-variant mb-2">${v.descripcion||''}</p><div class="flex items-center gap-1">${cnt?`<button onclick="removeVianda(${v.id})" class="w-7 h-7 rounded-full border border-outline-variant flex items-center justify-center font-bold text-sm hover:bg-surface-container">-</button>`:''}<button onclick="addVianda(${v.id})" class="w-7 h-7 rounded-full ${cnt?'bg-primary text-white':'border border-outline-variant hover:bg-surface-container'} flex items-center justify-center font-bold text-sm">+</button></div></div></div>`;}).join('');
+  document.getElementById('viandas-grid').innerHTML=list.map(v=>{
+    const cnt=S.viandas.filter(id=>id===v.id).length;
+    const fotoUrl=v.foto_url?`https://kbnghtochxlhdhoipefy.supabase.co/storage/v1/object/public/viandas-fotos/${v.foto_url}`:null;
+    const tieneNutri=v.calorias||v.ingredientes;
+    return `
+    <div class="vianda-card bg-white rounded-2xl overflow-hidden border border-outline-variant/30 ${cnt?'added':''}">
+      <div class="aspect-square bg-surface-container-low flex items-center justify-center text-5xl relative overflow-hidden">
+        ${fotoUrl?`<img src="${fotoUrl}" class="w-full h-full object-cover" alt="${v.nombre}"/>`:`<span>${v.emoji||'🍽'}</span>`}
+        ${cnt?`<div class="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold">${cnt}</div>`:''}
+        ${tieneNutri?`<button onclick="showNutri(event,${v.id})" class="absolute top-2 left-2 w-6 h-6 bg-white/90 rounded-full flex items-center justify-center text-primary font-bold text-xs shadow-sm">i</button>`:''}
+      </div>
+      <div class="p-3">
+        <p class="font-semibold text-sm leading-tight mb-0.5">${v.nombre}</p>
+        <p class="text-xs text-on-surface-variant mb-2">${v.descripcion||''}</p>
+        <div class="flex items-center gap-1">
+          ${cnt?`<button onclick="removeVianda(${v.id})" class="w-7 h-7 rounded-full border border-outline-variant flex items-center justify-center font-bold text-sm hover:bg-surface-container">-</button>`:''}
+          <button onclick="addVianda(${v.id})" class="w-7 h-7 rounded-full ${cnt?'bg-primary text-white':'border border-outline-variant hover:bg-surface-container'} flex items-center justify-center font-bold text-sm">+</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showNutri(e, id) {
+  e.stopPropagation();
+  const v = VIANDAS.find(x=>x.id===id);
+  if (!v) return;
+  const existing = document.getElementById('nutri-popup');
+  if (existing) existing.remove();
+  const popup = document.createElement('div');
+  popup.id = 'nutri-popup';
+  popup.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.4)';
+  popup.onclick = (ev) => { if(ev.target===popup) popup.remove(); };
+  const rows = [
+    v.calorias     ? `<tr><td class="py-2 text-on-surface-variant">Calorías</td><td class="py-2 font-semibold text-right">${v.calorias} kcal</td></tr>` : '',
+    v.proteinas    ? `<tr><td class="py-2 text-on-surface-variant border-t border-outline-variant/20">Proteínas</td><td class="py-2 font-semibold text-right border-t border-outline-variant/20">${v.proteinas}g</td></tr>` : '',
+    v.carbohidratos? `<tr><td class="py-2 text-on-surface-variant border-t border-outline-variant/20">Carbohidratos</td><td class="py-2 font-semibold text-right border-t border-outline-variant/20">${v.carbohidratos}g</td></tr>` : '',
+    v.grasas       ? `<tr><td class="py-2 text-on-surface-variant border-t border-outline-variant/20">Grasas</td><td class="py-2 font-semibold text-right border-t border-outline-variant/20">${v.grasas}g</td></tr>` : '',
+    v.peso_gramos  ? `<tr><td class="py-2 text-on-surface-variant border-t border-outline-variant/20">Peso</td><td class="py-2 font-semibold text-right border-t border-outline-variant/20">${v.peso_gramos}g</td></tr>` : '',
+  ].join('');
+  popup.innerHTML = `
+    <div style="background:white;border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div>
+          <p style="font-weight:700;font-size:16px;color:#005145">${v.nombre}</p>
+          ${v.peso_gramos?`<p style="font-size:12px;color:#6f7976">Porción: ${v.peso_gramos}g</p>`:''}
+        </div>
+        <button onclick="document.getElementById('nutri-popup').remove()" style="width:28px;height:28px;border-radius:50%;background:#efeeec;border:none;cursor:pointer;font-size:16px;color:#3f4946">✕</button>
+      </div>
+      ${rows?`<table style="width:100%;font-size:14px;border-collapse:collapse"><tbody>${rows}</tbody></table>`:''}
+      ${v.ingredientes?`<div style="margin-top:16px;padding-top:16px;border-top:1px solid #efeeec"><p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6f7976;margin-bottom:6px">Ingredientes</p><p style="font-size:13px;color:#3f4946;line-height:1.5">${v.ingredientes}</p></div>`:''}
+    </div>`;
+  document.body.appendChild(popup);
 }
 function addVianda(id){if(S.viandas.length>=S.packQty){showToast(`Tu pack es de ${S.packQty} viandas`);return;}S.viandas.push(id);updateCounter();renderViandasGrid();}
 function removeVianda(id){const i=S.viandas.lastIndexOf(id);if(i>-1)S.viandas.splice(i,1);updateCounter();renderViandasGrid();}

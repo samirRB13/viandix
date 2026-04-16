@@ -251,6 +251,22 @@ tr:hover td { background:#faf9f7; }
       <button onclick="closeModal()" class="text-gray-400 hover:text-gray-700"><span class="material-symbols-outlined">close</span></button>
     </div>
     <div class="space-y-4">
+
+      <!-- Foto -->
+      <div>
+        <label class="field-label">Foto del plato</label>
+        <div id="foto-preview-wrap" class="relative mb-2" style="display:none">
+          <img id="foto-preview" src="" class="w-full h-40 object-cover rounded-xl"/>
+          <button onclick="removeFoto()" class="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold">✕</button>
+        </div>
+        <div id="foto-upload-zone" onclick="document.getElementById('m-foto-input').click()"
+          class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-green-700 hover:bg-green-50 transition-colors">
+          <span class="material-symbols-outlined text-3xl text-gray-300 block mb-1">add_photo_alternate</span>
+          <p class="text-xs text-gray-400">Tocá para subir una foto</p>
+        </div>
+        <input type="file" id="m-foto-input" accept="image/*" style="display:none" onchange="previewFoto(this)"/>
+      </div>
+
       <div><label class="field-label">Nombre *</label><input id="m-nombre" type="text" class="field" placeholder="Ej: Locro de la Abuela"/></div>
       <div><label class="field-label">Descripción</label><input id="m-desc" type="text" class="field" placeholder="Ingredientes principales, porciones…"/></div>
       <div class="grid grid-cols-2 gap-3">
@@ -263,12 +279,26 @@ tr:hover td { background:#faf9f7; }
             <option value="sopas">Sopas</option>
           </select>
         </div>
-        <div><label class="field-label">Emoji</label><input id="m-emoji" type="text" class="field" placeholder="🍲" maxlength="4"/></div>
+        <div><label class="field-label">Emoji (fallback)</label><input id="m-emoji" type="text" class="field" placeholder="🍲" maxlength="4"/></div>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div><label class="field-label">Precio ($) *</label><input id="m-precio" type="number" class="field" placeholder="3500"/></div>
         <div><label class="field-label">Orden (menor = primero)</label><input id="m-orden" type="number" class="field" placeholder="0"/></div>
       </div>
+
+      <!-- Tabla nutricional -->
+      <div class="border-t pt-4">
+        <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Tabla nutricional (opcional)</p>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="field-label">Peso (gramos)</label><input id="m-peso" type="number" class="field" placeholder="300"/></div>
+          <div><label class="field-label">Calorías (kcal)</label><input id="m-calorias" type="number" class="field" placeholder="450"/></div>
+          <div><label class="field-label">Proteínas (g)</label><input id="m-proteinas" type="number" step="0.1" class="field" placeholder="28"/></div>
+          <div><label class="field-label">Carbohidratos (g)</label><input id="m-carbos" type="number" step="0.1" class="field" placeholder="45"/></div>
+          <div><label class="field-label">Grasas (g)</label><input id="m-grasas" type="number" step="0.1" class="field" placeholder="12"/></div>
+          <div><label class="field-label">Ingredientes</label><input id="m-ingredientes" type="text" class="field" placeholder="Maíz, porotos, zapallo…"/></div>
+        </div>
+      </div>
+
       <div class="flex items-center gap-3 pt-1">
         <label class="toggle"><input type="checkbox" id="m-activo" checked/><span class="toggle-slider"></span></label>
         <span class="text-sm font-medium">Visible en la app esta semana</span>
@@ -450,9 +480,13 @@ function filterMenuCat(cat){
 function renderViandasList(){
   const list=currentMenuCat==='todas'?allViandas:allViandas.filter(v=>v.categoria===currentMenuCat);
   if(!list.length){document.getElementById('viandas-list').innerHTML=`<div class="py-12 text-center text-gray-400 text-sm">No hay viandas en esta categoría.</div>`;return;}
-  document.getElementById('viandas-list').innerHTML=list.map(v=>`
+  document.getElementById('viandas-list').innerHTML=list.map(v=>{
+    const fotoUrl = v.foto_url ? sb.storage.from('viandas-fotos').getPublicUrl(v.foto_url).data.publicUrl : null;
+    return `
     <div class="vianda-row ${v.activo?'':'inactivo'}">
-      <div class="text-3xl w-10 text-center flex-shrink-0">${v.emoji||'🍽'}</div>
+      <div class="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
+        ${fotoUrl ? `<img src="${fotoUrl}" class="w-full h-full object-cover"/>` : `<span class="text-3xl">${v.emoji||'🍽'}</span>`}
+      </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
           <p class="font-semibold text-sm">${v.nombre}</p>
@@ -480,10 +514,34 @@ async function toggleActivo(id, activo){
 }
 
 // ===== MODAL =====
+let selectedFotoFile = null;
+let currentFotoUrl = null;
+
+function previewFoto(input) {
+  if (!input.files[0]) return;
+  selectedFotoFile = input.files[0];
+  const url = URL.createObjectURL(input.files[0]);
+  document.getElementById('foto-preview').src = url;
+  document.getElementById('foto-preview-wrap').style.display = 'block';
+  document.getElementById('foto-upload-zone').style.display = 'none';
+}
+function removeFoto() {
+  selectedFotoFile = null; currentFotoUrl = null;
+  document.getElementById('foto-preview-wrap').style.display = 'none';
+  document.getElementById('foto-upload-zone').style.display = 'block';
+  document.getElementById('m-foto-input').value = '';
+}
+
 function openModalVianda(id){
   editingId=id;
   const modal=document.getElementById('modal-vianda');
   const delBtn=document.getElementById('btn-delete-vianda');
+  selectedFotoFile=null; currentFotoUrl=null;
+  document.getElementById('foto-preview-wrap').style.display='none';
+  document.getElementById('foto-upload-zone').style.display='block';
+  document.getElementById('m-foto-input').value='';
+
+  const fields = ['nombre','desc','peso','calorias','proteinas','carbos','grasas','ingredientes'];
   if(id){
     const v=allViandas.find(x=>x.id===id);
     document.getElementById('modal-title').textContent='Editar vianda';
@@ -494,14 +552,24 @@ function openModalVianda(id){
     document.getElementById('m-precio').value=v.precio||'';
     document.getElementById('m-orden').value=v.orden||0;
     document.getElementById('m-activo').checked=v.activo;
+    document.getElementById('m-peso').value=v.peso_gramos||'';
+    document.getElementById('m-calorias').value=v.calorias||'';
+    document.getElementById('m-proteinas').value=v.proteinas||'';
+    document.getElementById('m-carbos').value=v.carbohidratos||'';
+    document.getElementById('m-grasas').value=v.grasas||'';
+    document.getElementById('m-ingredientes').value=v.ingredientes||'';
+    if(v.foto_url){
+      currentFotoUrl=v.foto_url;
+      const{data}=sb.storage.from('viandas-fotos').getPublicUrl(v.foto_url);
+      document.getElementById('foto-preview').src=data.publicUrl;
+      document.getElementById('foto-preview-wrap').style.display='block';
+      document.getElementById('foto-upload-zone').style.display='none';
+    }
     delBtn.style.display='block';
   } else {
     document.getElementById('modal-title').textContent='Nueva vianda';
-    document.getElementById('m-nombre').value='';
-    document.getElementById('m-desc').value='';
+    ['m-nombre','m-desc','m-emoji','m-precio','m-peso','m-calorias','m-proteinas','m-carbos','m-grasas','m-ingredientes'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('m-cat').value='carnes';
-    document.getElementById('m-emoji').value='';
-    document.getElementById('m-precio').value='';
     document.getElementById('m-orden').value=0;
     document.getElementById('m-activo').checked=true;
     delBtn.style.display='none';
@@ -514,15 +582,36 @@ async function saveVianda(){
   const nombre=document.getElementById('m-nombre').value.trim();
   const precio=parseInt(document.getElementById('m-precio').value);
   if(!nombre||!precio){showToast('Completá nombre y precio');return;}
-  const vianda={
-    nombre, descripcion:document.getElementById('m-desc').value.trim(),
-    categoria:document.getElementById('m-cat').value,
-    emoji:document.getElementById('m-emoji').value.trim()||'🍽',
-    precio, orden:parseInt(document.getElementById('m-orden').value)||0,
-    activo:document.getElementById('m-activo').checked,
-  };
+
   const btn=document.getElementById('btn-save-vianda');
   btn.textContent='Guardando…'; btn.disabled=true;
+
+  let foto_url = currentFotoUrl;
+  if(selectedFotoFile){
+    const ext=selectedFotoFile.name.split('.').pop();
+    const path=`${Date.now()}.${ext}`;
+    const{error:upErr}=await sb.storage.from('viandas-fotos').upload(path, selectedFotoFile, {upsert:true});
+    if(upErr){ showToast('Error al subir la foto'); btn.textContent='Guardar'; btn.disabled=false; return; }
+    foto_url=path;
+  }
+
+  const vianda={
+    nombre,
+    descripcion:document.getElementById('m-desc').value.trim(),
+    categoria:document.getElementById('m-cat').value,
+    emoji:document.getElementById('m-emoji').value.trim()||'🍽',
+    precio,
+    orden:parseInt(document.getElementById('m-orden').value)||0,
+    activo:document.getElementById('m-activo').checked,
+    foto_url,
+    peso_gramos:parseInt(document.getElementById('m-peso').value)||null,
+    calorias:parseInt(document.getElementById('m-calorias').value)||null,
+    proteinas:parseFloat(document.getElementById('m-proteinas').value)||null,
+    carbohidratos:parseFloat(document.getElementById('m-carbos').value)||null,
+    grasas:parseFloat(document.getElementById('m-grasas').value)||null,
+    ingredientes:document.getElementById('m-ingredientes').value.trim()||null,
+  };
+
   let error;
   if(editingId){ ({error}=await sb.from('viandas').update(vianda).eq('id',editingId)); }
   else { ({error}=await sb.from('viandas').insert([vianda])); }
