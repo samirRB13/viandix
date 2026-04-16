@@ -107,6 +107,7 @@ tailwind.config = {
     <a href="#como-funciona" onclick="toggleMobileMenu()" class="block text-sm font-semibold text-on-surface-variant py-2">Cómo funciona</a>
     <a href="estudiantes.html" class="block text-sm font-semibold text-on-surface-variant py-2">Estudiantes</a>
     <a href="#contacto" onclick="toggleMobileMenu()" class="block text-sm font-semibold text-on-surface-variant py-2">Contacto</a>
+    <a href="cuenta.html" class="block text-sm font-semibold text-on-surface-variant py-2">Mi cuenta</a>
     <button onclick="showScreen('screen-pack'); toggleMobileMenu();" class="w-full py-3 bg-primary text-white rounded-full text-sm font-bold mt-2">Pedir ahora</button>
   </div>
   <!-- Step dots (solo en pasos del pedido) -->
@@ -338,6 +339,20 @@ tailwind.config = {
   <div class="max-w-2xl mx-auto px-6 py-5 fade-up">
     <button onclick="showScreen('screen-entrega')" class="flex items-center gap-1 text-sm text-on-surface-variant mb-5"><span class="material-symbols-outlined text-base">arrow_back</span> Volver</button>
     <h2 class="font-headline font-bold text-2xl text-primary mb-5">Confirmá tu pedido</h2>
+
+    <!-- Banner cuenta (solo para no logueados, se oculta si está logueado) -->
+    <div id="banner-cuenta" class="mb-5 p-4 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 flex items-center gap-3">
+      <div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined fill-icon text-white text-xl">person</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-semibold text-primary">¿Primera vez? Creá tu cuenta</p>
+        <p class="text-xs text-on-surface-variant mt-0.5">Tu dirección se guarda automáticamente y la próxima compra es más rápida.</p>
+      </div>
+      <a href="cuenta.html" class="flex-shrink-0 px-3 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-container transition-colors">
+        Ingresar
+      </a>
+    </div>
     <div class="bg-surface-container-low rounded-2xl p-4 mb-5"><p class="text-xs font-bold uppercase tracking-widest text-outline mb-3">Resumen</p><div id="checkout-summary" class="space-y-1.5 text-sm"></div></div>
     <div class="mb-5">
       <p class="text-xs font-bold uppercase tracking-widest text-outline mb-3">Tus datos</p>
@@ -612,6 +627,8 @@ function selHorario(i,el){S.horario=HORARIOS[i];document.querySelectorAll('[data
 function checkEntregaOk(){document.getElementById('btn-entrega-next').disabled=!(S.lunes1&&S.horario&&(S.entregaMode==='una'||S.lunes2));}
 
 async function renderCheckout(){
+  const banner = document.getElementById('banner-cuenta');
+  if (banner) banner.style.display = currentUser ? 'none' : 'flex';
   const pack=PACKS.find(p=>p.qty===S.packQty);
   const counts={};S.viandas.forEach(id=>{counts[id]=(counts[id]||0)+1;});
   let html=`<div class="flex justify-between"><span class="text-on-surface-variant">Pack</span><span class="font-semibold">${pack.label}</span></div><div class="border-t border-outline-variant/30 my-2"></div>`;
