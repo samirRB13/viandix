@@ -117,6 +117,10 @@ tr:hover td { background:#faf9f7; }
       <button class="tab-btn" onclick="switchTab('packs')">
         <span class="material-symbols-outlined text-base mr-1">inventory_2</span>Packs
       </button>
+      <button class="tab-btn" onclick="switchTab('certificados')">
+        <span class="material-symbols-outlined text-base mr-1">school</span>Estudiantes
+        <span id="badge-certs" class="ml-1.5 bg-blue-100 text-blue-800 text-xs font-bold px-1.5 py-0.5 rounded-full hidden">0</span>
+      </button>
     </div>
   </header>
 
@@ -199,6 +203,43 @@ tr:hover td { background:#faf9f7; }
       <div id="packs-list" class="space-y-3"></div>
     </div>
 
+    <!-- ===== TAB: CERTIFICADOS ===== -->
+    <div id="tab-certificados" class="tab-panel">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="font-headline font-bold text-xl">Certificados estudiantiles</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Revisá y aprobá los certificados de alumnos regulares. Al aprobar se envía WhatsApp automático.</p>
+        </div>
+      </div>
+      <div class="flex gap-2 mb-4 flex-wrap">
+        <button onclick="filterCerts('todos')"     class="cf-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-900 text-white">Todos</button>
+        <button onclick="filterCerts('pendiente')" class="cf-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200">Pendientes</button>
+        <button onclick="filterCerts('aprobado')"  class="cf-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200">Aprobados</button>
+        <button onclick="filterCerts('rechazado')" class="cf-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200">Rechazados</button>
+      </div>
+      <div id="loading-certs" class="py-16 text-center text-gray-400"><div class="inline-block w-8 h-8 border-2 border-gray-200 border-t-green-700 rounded-full animate-spin mb-3"></div><p class="text-sm">Cargando…</p></div>
+      <div id="empty-certs" class="hidden py-16 text-center text-gray-400"><span class="material-symbols-outlined text-5xl mb-3 block">school</span><p class="text-sm">No hay certificados con ese filtro.</p></div>
+      <div id="certs-list" class="space-y-3"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: Aprobar/Rechazar certificado -->
+<div class="modal-bg" id="modal-cert">
+  <div class="modal fade-in">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-headline font-bold text-lg">Revisar certificado</h3>
+      <button onclick="closeModalCert()" class="text-gray-400 hover:text-gray-700"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div id="modal-cert-content" class="space-y-4">
+      <!-- Generado dinámicamente -->
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeModalCert()" class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold hover:bg-gray-50">Cancelar</button>
+      <button onclick="rechazarCert()" class="flex-1 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50">Rechazar</button>
+      <button onclick="aprobarCert()" class="flex-1 py-2.5 rounded-xl bg-green-900 text-white text-sm font-semibold hover:bg-green-800">Aprobar</button>
+    </div>
   </div>
 </div>
 
@@ -305,13 +346,13 @@ function setNextMonday(){
   document.getElementById('filter-date').value=d.toISOString().slice(0,10);
 }
 
-async function loadAll(){ await Promise.all([loadPedidos(), loadViandas(), loadPacks()]); }
+async function loadAll(){ await Promise.all([loadPedidos(), loadViandas(), loadPacks(), loadCerts()]); }
 
 // ===== TABS =====
 function switchTab(tab){
   document.querySelectorAll('.tab-btn').forEach(b=>{
     const label=b.textContent.trim();
-    const active=(tab==='pedidos'&&label.startsWith('Pedidos'))||(tab==='menu'&&label.includes('Menú'))||(tab==='packs'&&label.includes('Packs'));
+    const active=(tab==='pedidos'&&label.startsWith('Pedidos'))||(tab==='menu'&&label.includes('Menú'))||(tab==='packs'&&label.includes('Packs'))||(tab==='certificados'&&label.includes('Estudiantes'));
     b.classList.toggle('active',active);
   });
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
@@ -592,6 +633,115 @@ async function deletePack(){
   const{error}=await sb.from('packs').delete().eq('id',editingPackId);
   if(error){showToast('Error al eliminar');return;}
   closeModalPack();await loadPacks();showToast('Pack eliminado');
+}
+
+// ===== CERTIFICADOS =====
+let allCerts = [], currentCertFilter = 'todos', editingCertId = null;
+
+async function loadCerts() {
+  document.getElementById('loading-certs').style.display = 'block';
+  const { data, error } = await sb.from('certificados').select('*, perfiles(nombre, telefono, email)').order('created_at', { ascending: false });
+  if (error) { showToast('Error al cargar certificados'); return; }
+  allCerts = data || [];
+  document.getElementById('loading-certs').style.display = 'none';
+  const pendientes = allCerts.filter(c => c.estado === 'pendiente').length;
+  const badge = document.getElementById('badge-certs');
+  badge.textContent = pendientes;
+  badge.classList.toggle('hidden', pendientes === 0);
+  filterCerts(currentCertFilter);
+}
+
+function filterCerts(f) {
+  currentCertFilter = f;
+  document.querySelectorAll('.cf-btn').forEach(b => {
+    const active = (f==='todos'&&b.textContent.trim()==='Todos')||(f!=='todos'&&b.textContent.trim().toLowerCase()===f);
+    b.className = 'cf-btn px-3 py-1.5 rounded-lg text-xs font-semibold ' + (active ? 'bg-green-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200');
+  });
+  const list = f === 'todos' ? allCerts : allCerts.filter(c => c.estado === f);
+  if (!list.length) {
+    document.getElementById('certs-list').innerHTML = '';
+    document.getElementById('empty-certs').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('empty-certs').classList.add('hidden');
+  const estadoColors = { pendiente:'bg-amber-100 text-amber-800', aprobado:'bg-green-100 text-green-800', rechazado:'bg-red-100 text-red-700' };
+  document.getElementById('certs-list').innerHTML = list.map(c => `
+    <div class="vianda-row">
+      <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined fill-icon text-xl text-blue-700">school</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="font-semibold text-sm">${c.perfiles?.nombre || 'Sin nombre'}</p>
+        <p class="text-xs text-gray-500">${c.perfiles?.email || ''} · ${c.perfiles?.telefono || ''}</p>
+        <p class="text-xs text-gray-400">${new Date(c.created_at).toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'})}</p>
+      </div>
+      ${c.vencimiento ? `<div class="text-xs text-gray-500 mr-3 whitespace-nowrap">Vence: ${fmtDate(c.vencimiento)}</div>` : ''}
+      <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold mr-3 ${estadoColors[c.estado]||'bg-gray-100 text-gray-600'}">${c.estado}</span>
+      <button onclick="openModalCert(${c.id})" class="p-2 text-gray-400 hover:text-gray-700 transition-colors">
+        <span class="material-symbols-outlined text-base">open_in_new</span>
+      </button>
+    </div>`).join('');
+}
+
+async function openModalCert(id) {
+  editingCertId = id;
+  const cert = allCerts.find(c => c.id === id);
+  const { data: urlData } = await sb.storage.from('certificados').createSignedUrl(cert.archivo_url, 300);
+
+  document.getElementById('modal-cert-content').innerHTML = `
+    <div class="space-y-3">
+      <div class="flex justify-between text-sm"><span class="text-gray-500">Estudiante</span><span class="font-semibold">${cert.perfiles?.nombre||'—'}</span></div>
+      <div class="flex justify-between text-sm"><span class="text-gray-500">Email</span><span class="font-semibold">${cert.perfiles?.email||'—'}</span></div>
+      <div class="flex justify-between text-sm"><span class="text-gray-500">Teléfono</span><span class="font-semibold">${cert.perfiles?.telefono||'—'}</span></div>
+      <div class="flex justify-between text-sm"><span class="text-gray-500">Enviado</span><span class="font-semibold">${new Date(cert.created_at).toLocaleDateString('es-AR',{day:'numeric',month:'long'})}</span></div>
+      <div class="border-t pt-3">
+        <label class="text-xs font-semibold text-gray-600 block mb-1.5">Fecha de vencimiento del certificado</label>
+        <input type="date" id="cert-venc" value="${cert.vencimiento||''}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-green-700"/>
+      </div>
+      ${urlData?.signedUrl ? `<a href="${urlData.signedUrl}" target="_blank" class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-gray-200 text-sm font-semibold hover:bg-gray-50 transition-colors"><span class="material-symbols-outlined text-base">description</span>Ver certificado</a>` : '<p class="text-xs text-red-500">No se pudo cargar el archivo</p>'}
+    </div>`;
+  document.getElementById('modal-cert').classList.add('show');
+}
+
+function closeModalCert() { document.getElementById('modal-cert').classList.remove('show'); }
+
+async function aprobarCert() {
+  const venc = document.getElementById('cert-venc').value;
+  const cert = allCerts.find(c => c.id === editingCertId);
+  const { error } = await sb.from('certificados').update({
+    estado: 'aprobado',
+    vencimiento: venc || null,
+    aprobado_at: new Date().toISOString(),
+  }).eq('id', editingCertId);
+  if (error) { showToast('Error al aprobar'); return; }
+
+  // Enviar WhatsApp
+  if (cert.perfiles?.telefono) {
+    try {
+      await fetch('/api/notify-envio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telefono: cert.perfiles.telefono,
+          nombre: cert.perfiles.nombre,
+          numero: 'CERT-' + editingCertId,
+          horario: venc ? `Tu descuento vence el ${fmtDate(venc)}` : 'Descuento activo',
+          lunes1: null,
+          custom_msg: `🎓 *¡Tu descuento estudiantil fue aprobado!*\n\nHola ${cert.perfiles.nombre}! Tu certificado fue verificado y el *15% de descuento* ya está activo en tu cuenta de Viandix.\n\n${venc?`📅 Vence el ${fmtDate(venc)}\n\n`:''}Hacé tu próximo pedido en:\n🌐 https://viandix.vercel.app`,
+        })
+      });
+    } catch(e) { console.error(e); }
+  }
+
+  closeModalCert(); await loadCerts();
+  showToast('✅ Certificado aprobado y WhatsApp enviado');
+}
+
+async function rechazarCert() {
+  const { error } = await sb.from('certificados').update({ estado: 'rechazado' }).eq('id', editingCertId);
+  if (error) { showToast('Error al rechazar'); return; }
+  closeModalCert(); await loadCerts();
+  showToast('Certificado rechazado');
 }
 
 // ===== UTILS =====

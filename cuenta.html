@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Viandix | Mi Cuenta</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+* { box-sizing:border-box; }
+body { font-family:'Inter',sans-serif; background:#faf9f7; color:#1a1c1b; }
+.font-headline { font-family:'Plus Jakarta Sans',sans-serif; }
+.material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; vertical-align:middle; }
+.fill-icon { font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+.fade-up { animation:fadeUp 0.35s ease both; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.spinner { width:36px;height:36px;border:3px solid #bec9c5;border-top-color:#005145;border-radius:50%;animation:spin .8s linear infinite; }
+
+/* Tabs */
+.tab-btn { padding:10px 18px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;border:none;background:transparent;color:#3f4946; }
+.tab-btn.active { background:#005145;color:white; }
+.tab-btn:not(.active):hover { background:#efeeec; }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* Cards */
+.card { background:white;border-radius:20px;padding:20px;border:1px solid #e9e8e6; }
+
+/* Field */
+.field { width:100%;padding:10px 14px;border:1.5px solid #bec9c5;border-radius:10px;font-size:14px;outline:none;transition:border-color .2s;font-family:'Inter',sans-serif;background:white; }
+.field:focus { border-color:#005145; }
+.field-label { font-size:12px;font-weight:600;color:#3f4946;margin-bottom:4px;display:block; }
+
+/* Estado badges */
+.badge { display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:9999px;font-size:11px;font-weight:600; }
+.badge-pendiente  { background:#faeeda;color:#633806; }
+.badge-preparando { background:#e6f1fb;color:#0c447c; }
+.badge-enviado    { background:#e1f5ee;color:#085041; }
+.badge-entregado  { background:#eaf3de;color:#27500a; }
+.badge-aprobado   { background:#eaf3de;color:#27500a; }
+.badge-rechazado  { background:#fcebeb;color:#791f1f; }
+.badge-vencido    { background:#faeeda;color:#633806; }
+
+/* Upload zone */
+.upload-zone { border:2px dashed #bec9c5;border-radius:16px;padding:32px;text-align:center;cursor:pointer;transition:all .2s; }
+.upload-zone:hover { border-color:#005145;background:#f0fdf8; }
+.upload-zone.dragging { border-color:#005145;background:#f0fdf8; }
+
+#toast { position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(16px);background:#1a1c1b;color:white;padding:10px 20px;border-radius:9999px;font-size:13px;font-weight:500;opacity:0;transition:all .3s ease;pointer-events:none;z-index:9999;white-space:nowrap; }
+#toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- NAV -->
+<nav class="fixed top-0 w-full z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100">
+  <div class="flex justify-between items-center px-6 py-3 max-w-7xl mx-auto">
+    <a href="/" class="text-xl font-extrabold tracking-tight text-green-900 font-headline">viandix!</a>
+    <div class="hidden md:flex items-center gap-8">
+      <a href="/#como-funciona" class="text-sm font-semibold text-gray-500 hover:text-green-900 transition-colors">Cómo funciona</a>
+      <a href="estudiantes.html" class="text-sm font-semibold text-gray-500 hover:text-green-900 transition-colors">Estudiantes</a>
+      <a href="/#contacto" class="text-sm font-semibold text-gray-500 hover:text-green-900 transition-colors">Contacto</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <span id="nav-user-name" class="text-sm font-semibold text-green-900 hidden"></span>
+      <button id="nav-logout" onclick="logout()" class="hidden text-sm font-semibold text-gray-500 hover:text-red-600 transition-colors">Salir</button>
+      <a href="/" class="px-5 py-2 bg-green-900 text-white rounded-full text-sm font-bold hover:bg-green-800 transition-colors">Pedir ahora</a>
+    </div>
+  </div>
+</nav>
+
+<div id="toast"></div>
+
+<!-- LOADING -->
+<div id="loading-screen" class="pt-16 min-h-screen flex items-center justify-center">
+  <div class="text-center">
+    <div class="spinner mx-auto mb-4"></div>
+    <p class="text-sm text-gray-400">Cargando…</p>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen" style="display:none" class="pt-16 min-h-screen flex items-center justify-center px-5">
+  <div class="bg-white rounded-3xl shadow-xl p-10 w-full max-w-sm text-center fade-up">
+    <div class="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+      <span class="material-symbols-outlined fill-icon text-4xl text-green-900">person</span>
+    </div>
+    <h1 class="font-headline font-bold text-2xl mb-2">Mi Cuenta</h1>
+    <p class="text-gray-500 text-sm mb-8">Iniciá sesión para ver tus pedidos, guardar tu dirección y acceder a beneficios estudiantiles.</p>
+    <button onclick="loginGoogle()" class="w-full flex items-center justify-center gap-3 py-3.5 border-2 border-gray-200 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-colors">
+      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M47.5 24.6c0-1.6-.1-3.1-.4-4.6H24v8.7h13.2c-.6 3-2.3 5.5-4.9 7.2v6h7.9c4.6-4.3 7.3-10.6 7.3-17.3z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.9-6c-2.1 1.4-4.8 2.3-8 2.3-6.1 0-11.3-4.1-13.2-9.7H2.6v6.2C6.6 42.8 14.7 48 24 48z"/><path fill="#FBBC05" d="M10.8 28.8c-.5-1.4-.7-2.8-.7-4.3s.3-3 .7-4.3v-6.2H2.6C.9 17.3 0 20.5 0 24s.9 6.7 2.6 9.5l8.2-4.7z"/><path fill="#EA4335" d="M24 9.5c3.4 0 6.5 1.2 8.9 3.5l6.6-6.6C35.9 2.5 30.5 0 24 0 14.7 0 6.6 5.2 2.6 12.8l8.2 4.7C12.7 13.6 17.9 9.5 24 9.5z"/></svg>
+      Continuar con Google
+    </button>
+    <p class="text-xs text-gray-400 mt-5">Al ingresar aceptás nuestros términos de uso.</p>
+  </div>
+</div>
+
+<!-- APP (logueado) -->
+<div id="app-screen" style="display:none" class="pt-16 min-h-screen">
+  <div class="max-w-4xl mx-auto px-6 py-8">
+
+    <!-- Header usuario -->
+    <div class="flex items-center gap-4 mb-8 fade-up">
+      <img id="user-avatar" src="" alt="" class="w-14 h-14 rounded-full object-cover border-2 border-green-100" onerror="this.style.display='none'"/>
+      <div>
+        <h1 class="font-headline font-bold text-2xl" id="user-name">Hola!</h1>
+        <p class="text-sm text-gray-500" id="user-email"></p>
+      </div>
+      <!-- Badge estudiante -->
+      <div id="student-badge" style="display:none" class="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-full border border-green-200">
+        <span class="material-symbols-outlined fill-icon text-base text-green-700">school</span>
+        <span class="text-xs font-semibold text-green-800">Estudiante verificado</span>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6 bg-white rounded-2xl p-1.5 border border-gray-100 w-fit">
+      <button class="tab-btn active" onclick="switchTab('pedidos')">
+        <span class="material-symbols-outlined text-base mr-1">receipt_long</span>Mis pedidos
+      </button>
+      <button class="tab-btn" onclick="switchTab('direccion')">
+        <span class="material-symbols-outlined text-base mr-1">home</span>Mi dirección
+      </button>
+      <button class="tab-btn" onclick="switchTab('estudiante')">
+        <span class="material-symbols-outlined text-base mr-1">school</span>Estudiante
+      </button>
+    </div>
+
+    <!-- TAB: PEDIDOS -->
+    <div id="tab-pedidos" class="tab-panel active fade-up">
+      <div id="loading-pedidos" class="py-16 text-center text-gray-400">
+        <div class="spinner mx-auto mb-3"></div>
+        <p class="text-sm">Cargando tus pedidos…</p>
+      </div>
+      <div id="empty-pedidos" style="display:none" class="py-16 text-center">
+        <span class="material-symbols-outlined text-5xl text-gray-300 block mb-3">receipt_long</span>
+        <p class="font-semibold text-gray-600 mb-1">Todavía no hiciste ningún pedido</p>
+        <p class="text-sm text-gray-400 mb-5">¡Armá tu primer pack y disfrutá de tus viandas!</p>
+        <a href="/" class="px-6 py-3 bg-green-900 text-white rounded-full text-sm font-bold hover:bg-green-800 transition-colors">Ver el menú</a>
+      </div>
+      <div id="pedidos-list" class="space-y-4"></div>
+    </div>
+
+    <!-- TAB: DIRECCIÓN -->
+    <div id="tab-direccion" class="tab-panel fade-up">
+      <div class="card max-w-lg">
+        <h2 class="font-headline font-bold text-lg mb-1">Mi dirección de entrega</h2>
+        <p class="text-sm text-gray-500 mb-5">Se autocompletará en tu próximo pedido.</p>
+        <div class="space-y-4">
+          <div>
+            <label class="field-label">Nombre completo</label>
+            <input id="p-nombre" type="text" class="field" placeholder="Ej: María García"/>
+          </div>
+          <div>
+            <label class="field-label">Teléfono / WhatsApp</label>
+            <input id="p-telefono" type="tel" class="field" placeholder="+54 9 380 000-0000"/>
+          </div>
+          <div>
+            <label class="field-label">Dirección</label>
+            <input id="p-direccion" type="text" class="field" placeholder="Calle, número, piso/depto"/>
+          </div>
+          <div>
+            <label class="field-label">Barrio / Localidad</label>
+            <input id="p-barrio" type="text" class="field" placeholder="Ej: Capital, Banda Florida…"/>
+          </div>
+          <button onclick="savePerfil()" class="w-full py-3 bg-green-900 text-white rounded-xl font-semibold text-sm hover:bg-green-800 transition-colors">
+            Guardar dirección
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: ESTUDIANTE -->
+    <div id="tab-estudiante" class="tab-panel fade-up">
+      <div class="max-w-lg space-y-5">
+
+        <!-- Estado actual -->
+        <div class="card" id="cert-estado-card">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined fill-icon text-xl text-green-900">school</span>
+            </div>
+            <div class="flex-1">
+              <h2 class="font-headline font-bold text-lg mb-0.5">Descuento Estudiantil</h2>
+              <p class="text-sm text-gray-500 mb-3">Accedé al <strong>15% de descuento</strong> en todos los packs subiendo tu certificado de alumno regular.</p>
+              <div id="cert-estado"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subir certificado -->
+        <div class="card" id="upload-card">
+          <h3 class="font-semibold mb-1">Subir certificado</h3>
+          <p class="text-xs text-gray-500 mb-4">PDF, JPG o PNG · Máximo 5MB · Debe mostrar nombre, institución y año en curso.</p>
+
+          <div class="upload-zone" id="upload-zone" onclick="document.getElementById('cert-input').click()"
+               ondragover="event.preventDefault();this.classList.add('dragging')"
+               ondragleave="this.classList.remove('dragging')"
+               ondrop="handleDrop(event)">
+            <span class="material-symbols-outlined text-4xl text-gray-300 block mb-2">upload_file</span>
+            <p class="text-sm font-semibold text-gray-600">Arrastrá el archivo o hacé clic</p>
+            <p class="text-xs text-gray-400 mt-1" id="upload-filename">PDF, JPG o PNG hasta 5MB</p>
+          </div>
+          <input type="file" id="cert-input" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="handleFileSelect(this)"/>
+
+          <button onclick="uploadCertificado()" id="btn-upload" disabled class="w-full mt-4 py-3 bg-green-900 text-white rounded-xl font-semibold text-sm hover:bg-green-800 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed">
+            Enviar certificado
+          </button>
+        </div>
+
+        <!-- Info -->
+        <div class="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-3">
+          <span class="material-symbols-outlined text-amber-500 mt-0.5">info</span>
+          <div>
+            <p class="text-sm font-semibold text-amber-800">¿Cómo funciona?</p>
+            <p class="text-xs text-amber-700 mt-0.5 leading-relaxed">Una vez que subas tu certificado, nuestro equipo lo revisa en menos de 24 horas. Te avisamos por WhatsApp cuando esté aprobado y el descuento se aplica automáticamente.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const { createClient } = supabase;
+const sb = createClient(
+  'https://kbnghtochxlhdhoipefy.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibmdodG9jaHhsaGRob2lwZWZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNzk4ODQsImV4cCI6MjA5MTg1NTg4NH0.yg7Cxs3m-dcTihluyGGfimv1binxrN9uCDRgd3FpO7Q'
+);
+
+let currentUser = null;
+let selectedFile = null;
+
+// ===== AUTH =====
+document.addEventListener('DOMContentLoaded', async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    showApp();
+  } else {
+    showLogin();
+  }
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      currentUser = session.user;
+      showApp();
+    } else if (event === 'SIGNED_OUT') {
+      showLogin();
+    }
+  });
+});
+
+async function loginGoogle() {
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+  if (error) showToast('Error al iniciar sesión');
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  showToast('Sesión cerrada');
+}
+
+function showLogin() {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-screen').style.display = 'none';
+}
+
+async function showApp() {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+
+  const meta = currentUser.user_metadata;
+  document.getElementById('user-name').textContent = 'Hola, ' + (meta.full_name || meta.name || 'Cliente') + '!';
+  document.getElementById('user-email').textContent = currentUser.email;
+  document.getElementById('nav-user-name').textContent = meta.full_name || meta.name || '';
+  document.getElementById('nav-user-name').classList.remove('hidden');
+  document.getElementById('nav-logout').classList.remove('hidden');
+  if (meta.avatar_url) document.getElementById('user-avatar').src = meta.avatar_url;
+
+  await Promise.all([loadPedidos(), loadPerfil(), loadCertificado()]);
+}
+
+// ===== TABS =====
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const active = (tab==='pedidos'&&b.textContent.includes('pedidos'))||(tab==='direccion'&&b.textContent.includes('dirección'))||(tab==='estudiante'&&b.textContent.includes('Estudiante'));
+    b.classList.toggle('active', active);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+}
+
+// ===== PEDIDOS =====
+async function loadPedidos() {
+  const { data, error } = await sb.from('pedidos')
+    .select('*')
+    .eq('telefono', currentUser.phone || '')
+    .order('created_at', { ascending: false });
+
+  // Como no siempre hay teléfono en el user, buscamos también por email en nombre
+  const { data: data2 } = await sb.from('pedidos')
+    .select('*')
+    .ilike('nombre', '%' + (currentUser.user_metadata.full_name || '').split(' ')[0] + '%')
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  const pedidos = [...(data||[]), ...(data2||[])].filter((p,i,arr) => arr.findIndex(x=>x.id===p.id)===i);
+
+  document.getElementById('loading-pedidos').style.display = 'none';
+
+  if (!pedidos.length) {
+    document.getElementById('empty-pedidos').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('pedidos-list').innerHTML = pedidos.map(p => {
+    const vList = (p.viandas||[]).map(v=>`${v.nombre}${v.qty>1?` ×${v.qty}`:''}`).join(', ');
+    const estadoClass = `badge-${p.estado||'pendiente'}`;
+    return `
+    <div class="card">
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <p class="font-semibold">${p.numero||'—'}</p>
+          <p class="text-xs text-gray-400">${new Date(p.created_at).toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'})}</p>
+        </div>
+        <span class="badge ${estadoClass}">${p.estado||'pendiente'}</span>
+      </div>
+      <p class="text-sm text-gray-600 mb-2">${vList}</p>
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-gray-500">Entrega: <strong>${fmtDate(p.lunes1)}</strong> · ${p.horario||''}</span>
+        <span class="font-bold text-green-900">${fmtPesos(p.total)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===== PERFIL =====
+async function loadPerfil() {
+  const { data } = await sb.from('perfiles').select('*').eq('id', currentUser.id).single();
+  if (!data) return;
+  document.getElementById('p-nombre').value = data.nombre || '';
+  document.getElementById('p-telefono').value = data.telefono || '';
+  document.getElementById('p-direccion').value = data.direccion || '';
+  document.getElementById('p-barrio').value = data.barrio || '';
+}
+
+async function savePerfil() {
+  const perfil = {
+    id: currentUser.id,
+    nombre: document.getElementById('p-nombre').value.trim(),
+    email: currentUser.email,
+    telefono: document.getElementById('p-telefono').value.trim(),
+    direccion: document.getElementById('p-direccion').value.trim(),
+    barrio: document.getElementById('p-barrio').value.trim(),
+  };
+  const { error } = await sb.from('perfiles').upsert([perfil]);
+  if (error) { showToast('Error al guardar'); return; }
+  showToast('✅ Dirección guardada');
+}
+
+// ===== CERTIFICADO =====
+async function loadCertificado() {
+  const { data } = await sb.from('certificados')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  const estadoEl = document.getElementById('cert-estado');
+  const uploadCard = document.getElementById('upload-card');
+  const studentBadge = document.getElementById('student-badge');
+
+  if (!data) {
+    estadoEl.innerHTML = `<span class="badge badge-pendiente">Sin certificado</span>`;
+    uploadCard.style.display = 'block';
+    return;
+  }
+
+  const hoy = new Date();
+  const venc = data.vencimiento ? new Date(data.vencimiento) : null;
+  const vencido = venc && venc < hoy;
+
+  if (data.estado === 'aprobado' && !vencido) {
+    estadoEl.innerHTML = `
+      <span class="badge badge-aprobado mb-2 inline-flex">✓ Aprobado · 15% de descuento activo</span>
+      ${venc ? `<p class="text-xs text-gray-500 mt-1">Vence el ${venc.toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'})}</p>` : ''}`;
+    studentBadge.style.display = 'flex';
+    uploadCard.style.display = 'none';
+  } else if (data.estado === 'pendiente') {
+    estadoEl.innerHTML = `<span class="badge badge-pendiente">⏳ En revisión — te avisamos por WhatsApp</span>`;
+    uploadCard.style.display = 'none';
+  } else if (data.estado === 'rechazado') {
+    estadoEl.innerHTML = `
+      <span class="badge badge-rechazado mb-2 inline-flex">✗ Rechazado</span>
+      <p class="text-xs text-gray-500 mt-1">Podés subir un nuevo certificado.</p>`;
+    uploadCard.style.display = 'block';
+  } else if (vencido) {
+    estadoEl.innerHTML = `
+      <span class="badge badge-vencido mb-2 inline-flex">⚠ Certificado vencido</span>
+      <p class="text-xs text-gray-500 mt-1">Actualizá tu certificado para mantener el descuento.</p>`;
+    uploadCard.style.display = 'block';
+  }
+}
+
+// ===== UPLOAD =====
+function handleFileSelect(input) {
+  if (input.files[0]) setFile(input.files[0]);
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('dragging');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+}
+function setFile(file) {
+  if (file.size > 5 * 1024 * 1024) { showToast('El archivo supera los 5MB'); return; }
+  selectedFile = file;
+  document.getElementById('upload-filename').textContent = file.name;
+  document.getElementById('upload-zone').style.borderColor = '#005145';
+  document.getElementById('btn-upload').disabled = false;
+}
+
+async function uploadCertificado() {
+  if (!selectedFile) return;
+  const btn = document.getElementById('btn-upload');
+  btn.textContent = 'Subiendo…'; btn.disabled = true;
+
+  const ext = selectedFile.name.split('.').pop();
+  const path = `${currentUser.id}/${Date.now()}.${ext}`;
+
+  const { error: upErr } = await sb.storage.from('certificados').upload(path, selectedFile);
+  if (upErr) { showToast('Error al subir el archivo'); btn.textContent='Enviar certificado'; btn.disabled=false; return; }
+
+  const { data: urlData } = sb.storage.from('certificados').getPublicUrl(path);
+
+  const { error: dbErr } = await sb.from('certificados').insert([{
+    user_id: currentUser.id,
+    archivo_url: path,
+    estado: 'pendiente',
+  }]);
+
+  if (dbErr) { showToast('Error al registrar el certificado'); btn.textContent='Enviar certificado'; btn.disabled=false; return; }
+
+  showToast('✅ Certificado enviado. Te avisamos por WhatsApp.');
+  btn.textContent = 'Enviar certificado';
+  await loadCertificado();
+}
+
+// ===== UTILS =====
+function fmtPesos(n) { return '$'+(n||0).toLocaleString('es-AR'); }
+function fmtDate(str) { if(!str)return '—'; const d=new Date(str+'T12:00:00'); return d.toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'}); }
+function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+</script>
+</body>
+</html>
