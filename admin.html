@@ -114,6 +114,9 @@ tr:hover td { background:#faf9f7; }
       <button class="tab-btn" onclick="switchTab('menu')">
         <span class="material-symbols-outlined text-base mr-1">restaurant_menu</span>Menú semanal
       </button>
+      <button class="tab-btn" onclick="switchTab('packs')">
+        <span class="material-symbols-outlined text-base mr-1">inventory_2</span>Packs
+      </button>
     </div>
   </header>
 
@@ -181,6 +184,21 @@ tr:hover td { background:#faf9f7; }
       <div id="viandas-list" class="space-y-2"></div>
     </div>
 
+    <!-- ===== TAB: PACKS ===== -->
+    <div id="tab-packs" class="tab-panel">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="font-headline font-bold text-xl">Packs</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Editá precios y descripciones. El precio por unidad se calcula solo.</p>
+        </div>
+        <button onclick="openModalPack(null)" class="flex items-center gap-2 px-4 py-2.5 bg-green-900 text-white rounded-xl font-semibold text-sm hover:bg-green-800 transition-colors">
+          <span class="material-symbols-outlined text-base">add</span> Nuevo pack
+        </button>
+      </div>
+      <div id="loading-packs" class="py-16 text-center text-gray-400"><div class="inline-block w-8 h-8 border-2 border-gray-200 border-t-green-700 rounded-full animate-spin mb-3"></div><p class="text-sm">Cargando packs…</p></div>
+      <div id="packs-list" class="space-y-3"></div>
+    </div>
+
   </div>
 </div>
 
@@ -225,6 +243,39 @@ tr:hover td { background:#faf9f7; }
   </div>
 </div>
 
+<!-- MODAL: Pack -->
+<div class="modal-bg" id="modal-pack">
+  <div class="modal fade-in">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-headline font-bold text-lg" id="modal-pack-title">Nuevo pack</h3>
+      <button onclick="closeModalPack()" class="text-gray-400 hover:text-gray-700"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="space-y-4">
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="field-label">Cantidad de viandas *</label><input id="mp-qty" type="number" class="field" placeholder="5"/></div>
+        <div><label class="field-label">Precio total ($) *</label><input id="mp-precio" type="number" class="field" placeholder="14000" oninput="updatePpu()"/></div>
+      </div>
+      <div class="bg-gray-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-gray-500">Precio por unidad</p>
+        <p class="font-headline font-bold text-xl text-green-900" id="mp-ppu-preview">—</p>
+      </div>
+      <div><label class="field-label">Descripción corta</label><input id="mp-sub" type="text" class="field" placeholder="Ej: Para la semana laboral"/></div>
+      <div><label class="field-label">Orden (menor = primero)</label><input id="mp-orden" type="number" class="field" placeholder="1"/></div>
+      <div class="flex items-center gap-3 pt-1">
+        <label class="toggle"><input type="checkbox" id="mp-activo" checked/><span class="toggle-slider"></span></label>
+        <span class="text-sm font-medium">Pack activo y visible</span>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeModalPack()" class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold hover:bg-gray-50 transition-colors">Cancelar</button>
+      <button onclick="savePack()" id="btn-save-pack" class="flex-1 py-2.5 rounded-xl bg-green-900 text-white text-sm font-semibold hover:bg-green-800 transition-colors">Guardar</button>
+    </div>
+    <button id="btn-delete-pack" onclick="deletePack()" class="w-full mt-3 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors" style="display:none">
+      <span class="material-symbols-outlined text-base mr-1">delete</span>Eliminar pack
+    </button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -254,11 +305,15 @@ function setNextMonday(){
   document.getElementById('filter-date').value=d.toISOString().slice(0,10);
 }
 
-async function loadAll(){ await Promise.all([loadPedidos(), loadViandas()]); }
+async function loadAll(){ await Promise.all([loadPedidos(), loadViandas(), loadPacks()]); }
 
 // ===== TABS =====
 function switchTab(tab){
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',b.textContent.includes(tab==='pedidos'?'Pedidos':'Menú')));
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    const label=b.textContent.trim();
+    const active=(tab==='pedidos'&&label.startsWith('Pedidos'))||(tab==='menu'&&label.includes('Menú'))||(tab==='packs'&&label.includes('Packs'));
+    b.classList.toggle('active',active);
+  });
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
 }
@@ -416,12 +471,110 @@ async function deleteVianda(){
   closeModal(); await loadViandas(); showToast('Vianda eliminada');
 }
 
+// ===== PACKS =====
+let allPacks = [], editingPackId = null;
+
+async function loadPacks(){
+  document.getElementById('loading-packs').style.display='block';
+  const{data,error}=await sb.from('packs').select('*').order('orden',{ascending:true});
+  if(error){showToast('Error al cargar packs');return;}
+  allPacks=data||[];
+  document.getElementById('loading-packs').style.display='none';
+  renderPacksList();
+}
+
+function renderPacksList(){
+  if(!allPacks.length){document.getElementById('packs-list').innerHTML=`<div class="py-12 text-center text-gray-400 text-sm">No hay packs cargados.</div>`;return;}
+  document.getElementById('packs-list').innerHTML=allPacks.map(p=>`
+    <div class="vianda-row ${p.activo?'':'inactivo'}">
+      <div class="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center flex-shrink-0">
+        <span class="font-headline font-bold text-green-900 text-lg">${p.qty}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <p class="font-semibold text-sm">${p.qty} viandas</p>
+          ${!p.activo?'<span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">Oculto</span>':''}
+        </div>
+        <p class="text-xs text-gray-500">${p.sub||'Sin descripción'} · ${fmtPesos(Math.round(p.precio/p.qty))} c/u</p>
+      </div>
+      <div class="text-base font-bold text-green-900 mr-4 whitespace-nowrap">${fmtPesos(p.precio)}</div>
+      <label class="toggle mr-3">
+        <input type="checkbox" ${p.activo?'checked':''} onchange="toggleActivoPack(${p.id},this.checked)"/>
+        <span class="toggle-slider"></span>
+      </label>
+      <button onclick="openModalPack(${p.id})" class="p-2 text-gray-400 hover:text-gray-700 transition-colors">
+        <span class="material-symbols-outlined text-base">edit</span>
+      </button>
+    </div>`).join('');
+}
+
+async function toggleActivoPack(id,activo){
+  const{error}=await sb.from('packs').update({activo}).eq('id',id);
+  if(error){showToast('Error al actualizar');return;}
+  const p=allPacks.find(x=>x.id===id);if(p)p.activo=activo;
+  renderPacksList();showToast(activo?'Pack activado':'Pack desactivado');
+}
+
+function openModalPack(id){
+  editingPackId=id;
+  const delBtn=document.getElementById('btn-delete-pack');
+  if(id){
+    const p=allPacks.find(x=>x.id===id);
+    document.getElementById('modal-pack-title').textContent='Editar pack';
+    document.getElementById('mp-qty').value=p.qty;
+    document.getElementById('mp-precio').value=p.precio;
+    document.getElementById('mp-sub').value=p.sub||'';
+    document.getElementById('mp-orden').value=p.orden||0;
+    document.getElementById('mp-activo').checked=p.activo;
+    delBtn.style.display='block';
+  } else {
+    document.getElementById('modal-pack-title').textContent='Nuevo pack';
+    document.getElementById('mp-qty').value='';
+    document.getElementById('mp-precio').value='';
+    document.getElementById('mp-sub').value='';
+    document.getElementById('mp-orden').value=0;
+    document.getElementById('mp-activo').checked=true;
+    delBtn.style.display='none';
+  }
+  updatePpu();
+  document.getElementById('modal-pack').classList.add('show');
+}
+function closeModalPack(){document.getElementById('modal-pack').classList.remove('show');}
+
+function updatePpu(){
+  const qty=parseInt(document.getElementById('mp-qty').value)||0;
+  const precio=parseInt(document.getElementById('mp-precio').value)||0;
+  document.getElementById('mp-ppu-preview').textContent=qty&&precio?fmtPesos(Math.round(precio/qty)):'—';
+}
+
+async function savePack(){
+  const qty=parseInt(document.getElementById('mp-qty').value);
+  const precio=parseInt(document.getElementById('mp-precio').value);
+  if(!qty||!precio){showToast('Completá cantidad y precio');return;}
+  const pack={qty,precio,sub:document.getElementById('mp-sub').value.trim(),orden:parseInt(document.getElementById('mp-orden').value)||0,activo:document.getElementById('mp-activo').checked};
+  const btn=document.getElementById('btn-save-pack');btn.textContent='Guardando…';btn.disabled=true;
+  let error;
+  if(editingPackId){({error}=await sb.from('packs').update(pack).eq('id',editingPackId));}
+  else{({error}=await sb.from('packs').insert([pack]));}
+  btn.textContent='Guardar';btn.disabled=false;
+  if(error){showToast('Error: '+error.message);return;}
+  closeModalPack();await loadPacks();showToast(editingPackId?'Pack actualizado':'Pack creado');
+}
+
+async function deletePack(){
+  if(!confirm('¿Eliminar este pack?'))return;
+  const{error}=await sb.from('packs').delete().eq('id',editingPackId);
+  if(error){showToast('Error al eliminar');return;}
+  closeModalPack();await loadPacks();showToast('Pack eliminado');
+}
+
 // ===== UTILS =====
 function fmtPesos(n){return '$'+(n||0).toLocaleString('es-AR');}
 function fmtDate(str){if(!str)return '—';const d=new Date(str+'T12:00:00');return d.toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 
 document.getElementById('modal-vianda').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.getElementById('modal-pack').addEventListener('click',function(e){if(e.target===this)closeModalPack();});
 </script>
 </body>
 </html>

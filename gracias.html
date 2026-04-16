@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Viandix | Resultado del pago</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+body { font-family:'Inter',sans-serif; background:#faf9f7; }
+.font-headline { font-family:'Plus Jakarta Sans',sans-serif; }
+.material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; }
+.fill-icon { font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24; }
+@keyframes bounceIn { 0%{transform:scale(.5);opacity:0} 60%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+.bounce { animation:bounceIn 0.5s ease both; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+.fade-up { animation:fadeUp 0.4s ease 0.3s both; }
+</style>
+</head>
+<body class="min-h-screen flex items-center justify-center px-5">
+<div class="w-full max-w-sm text-center">
+
+  <!-- SUCCESS -->
+  <div id="view-success" style="display:none">
+    <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 bounce">
+      <span class="material-symbols-outlined fill-icon text-5xl text-green-700">check_circle</span>
+    </div>
+    <h1 class="font-headline font-extrabold text-3xl text-green-900 mb-2">¡Pago exitoso!</h1>
+    <p class="text-gray-500 mb-2">Tu pedido fue confirmado.</p>
+    <p class="text-sm font-semibold text-gray-700 mb-6" id="ref-success"></p>
+    <div class="fade-up space-y-3">
+      <a id="wa-success" href="#" target="_blank" class="flex items-center justify-center gap-2 w-full py-3.5 rounded-full font-bold text-base" style="background:#25D366;color:white">
+        <span class="material-symbols-outlined fill-icon">chat</span> Avisarnos por WhatsApp
+      </a>
+      <a href="/" class="flex items-center justify-center w-full py-3.5 rounded-full font-bold text-base border-2 border-green-900 text-green-900 hover:bg-green-900 hover:text-white transition-all">
+        Volver al inicio
+      </a>
+    </div>
+  </div>
+
+  <!-- PENDING -->
+  <div id="view-pending" style="display:none">
+    <div class="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6 bounce">
+      <span class="material-symbols-outlined fill-icon text-5xl text-amber-600">schedule</span>
+    </div>
+    <h1 class="font-headline font-extrabold text-3xl text-amber-700 mb-2">Pago pendiente</h1>
+    <p class="text-gray-500 mb-2">Tu pago está siendo procesado.</p>
+    <p class="text-sm text-gray-500 mb-6">Te avisamos por WhatsApp cuando se confirme.</p>
+    <div class="fade-up">
+      <a href="/" class="flex items-center justify-center w-full py-3.5 rounded-full font-bold text-base border-2 border-amber-600 text-amber-700 hover:bg-amber-600 hover:text-white transition-all">
+        Volver al inicio
+      </a>
+    </div>
+  </div>
+
+  <!-- FAILURE -->
+  <div id="view-failure" style="display:none">
+    <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 bounce">
+      <span class="material-symbols-outlined fill-icon text-5xl text-red-600">cancel</span>
+    </div>
+    <h1 class="font-headline font-extrabold text-3xl text-red-700 mb-2">Pago no completado</h1>
+    <p class="text-gray-500 mb-6">Podés intentarlo de nuevo o elegir otro método de pago.</p>
+    <div class="fade-up space-y-3">
+      <a href="/" class="flex items-center justify-center w-full py-3.5 rounded-full font-bold text-base bg-green-900 text-white hover:bg-green-800 transition-all">
+        Intentar de nuevo
+      </a>
+      <a id="wa-failure" href="#" target="_blank" class="flex items-center justify-center gap-2 w-full py-3.5 rounded-full font-bold text-base border-2 border-gray-200 text-gray-600 hover:bg-gray-50 transition-all">
+        <span class="material-symbols-outlined fill-icon text-base">chat</span> Contactarnos por WhatsApp
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const status = params.get('status') || 'failure';
+const ref = params.get('ref') || '';
+
+const waBase = 'https://wa.me/5493800000000';
+
+if(status === 'success') {
+  document.getElementById('view-success').style.display = 'block';
+  document.getElementById('ref-success').textContent = ref ? `Pedido #${ref}` : '';
+  const msg = encodeURIComponent(`Hola! Acabo de pagar mi pedido Viandix por MercadoPago ✅\nPedido #${ref}`);
+  document.getElementById('wa-success').href = `${waBase}?text=${msg}`;
+} else if(status === 'pending') {
+  document.getElementById('view-pending').style.display = 'block';
+} else {
+  document.getElementById('view-failure').style.display = 'block';
+  const msg = encodeURIComponent(`Hola! Tuve un problema al pagar con MercadoPago en Viandix. ¿Me pueden ayudar?\nPedido #${ref}`);
+  document.getElementById('wa-failure').href = `${waBase}?text=${msg}`;
+}
+</script>
+</body>
+</html>
