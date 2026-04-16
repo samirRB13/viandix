@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { telefono, nombre, numero, horario, lunes1 } = req.body;
+  const { telefono, nombre, numero, horario, lunes1, custom_msg } = req.body;
 
   if (!telefono || !numero) {
     return res.status(400).json({ error: 'Faltan datos del pedido' });
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     else tel = '+549' + tel;
   }
 
-  const mensaje =
+  const mensaje = custom_msg ||
     `🚚 *¡Tu pedido Viandix está en camino!*\n\n` +
     `Hola ${nombre || 'cliente'}! Tu pedido *#${numero}* ya salió y está en camino a tu casa.\n\n` +
     `📅 Entrega: *${lunes1 || 'hoy'}*\n` +
