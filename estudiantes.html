@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Viandix | Estudiantes</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+body { font-family:'Inter',sans-serif; background:#faf9f7; color:#1a1c1b; }
+.font-headline { font-family:'Plus Jakarta Sans',sans-serif; }
+.material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; }
+.fill-icon { font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+.fade-up { animation:fadeUp 0.5s ease both; }
+.benefit-card { transition:all .2s ease; }
+.benefit-card:hover { transform:translateY(-3px); box-shadow:0 12px 32px rgba(0,81,69,.1); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="fixed top-0 w-full z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100">
+  <div class="flex justify-between items-center px-6 py-3 max-w-7xl mx-auto">
+    <a href="/" class="text-xl font-extrabold tracking-tight text-green-900 font-headline">viandix!</a>
+    <div class="hidden md:flex items-center gap-8">
+      <a href="/#como-funciona" class="text-sm font-semibold text-gray-500 hover:text-green-900 transition-colors">Cómo funciona</a>
+      <a href="estudiantes.html" class="text-sm font-semibold text-green-900 border-b-2 border-green-900 pb-0.5">Estudiantes</a>
+      <a href="/#contacto" class="text-sm font-semibold text-gray-500 hover:text-green-900 transition-colors">Contacto</a>
+    </div>
+    <a href="/" class="px-5 py-2 bg-green-900 text-white rounded-full text-sm font-bold hover:bg-green-800 transition-colors">
+      Pedir ahora
+    </a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="pt-16 bg-green-900 overflow-hidden">
+  <div class="max-w-7xl mx-auto px-6 py-16 md:py-24 grid md:grid-cols-2 gap-12 items-center">
+    <div class="fade-up">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 text-green-100 text-xs font-semibold mb-5">
+        <span class="material-symbols-outlined fill-icon text-base">school</span>
+        Programa Estudiantes Viandix
+      </div>
+      <h1 class="text-5xl md:text-6xl font-headline font-extrabold text-white leading-[1.05] mb-5">
+        Comer bien<br/>no tiene que<br/><span style="color:#fe9832">costar caro.</span>
+      </h1>
+      <p class="text-green-200 text-lg leading-relaxed mb-8">
+        Sabemos que estudiar es exigente. Por eso tenemos beneficios exclusivos para estudiantes universitarios y terciarios de La Rioja.
+      </p>
+      <a href="https://wa.me/5493800000000?text=Hola!%20Soy%20estudiante%20y%20quiero%20acceder%20al%20descuento%20de%20Viandix%20🎓" target="_blank"
+         class="inline-flex items-center gap-2 px-8 py-4 rounded-full font-bold text-base" style="background:#25D366;color:white">
+        <span class="material-symbols-outlined fill-icon">chat</span> Activar mi descuento
+      </a>
+    </div>
+    <div class="hidden md:flex justify-center">
+      <div class="relative">
+        <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=500&q=80" alt="Estudiante" class="rounded-3xl w-96 h-80 object-cover"/>
+        <!-- Badge flotante -->
+        <div class="absolute -bottom-5 -left-5 bg-white rounded-2xl shadow-xl p-4 flex items-center gap-3">
+          <div class="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
+            <span class="font-headline font-extrabold text-xl text-green-900">15%</span>
+          </div>
+          <div>
+            <p class="font-bold text-sm text-gray-900">Descuento exclusivo</p>
+            <p class="text-xs text-gray-500">En todos los packs</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BENEFICIOS -->
+<section class="py-20 max-w-7xl mx-auto px-6">
+  <div class="text-center mb-14">
+    <h2 class="font-headline font-extrabold text-3xl md:text-4xl text-green-900 mb-3">Tus beneficios</h2>
+    <p class="text-gray-500 text-lg max-w-xl mx-auto">Todo lo que necesitás para comer bien mientras estudiás.</p>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="benefit-card bg-white rounded-3xl p-8 border border-gray-100">
+      <div class="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center mb-5">
+        <span class="material-symbols-outlined fill-icon text-3xl text-green-900">percent</span>
+      </div>
+      <h3 class="font-headline font-bold text-xl mb-2">15% de descuento</h3>
+      <p class="text-gray-500 text-sm leading-relaxed">En todos los packs, todos los meses. Solo acreditás tu condición de estudiante una vez.</p>
+    </div>
+    <div class="benefit-card bg-white rounded-3xl p-8 border border-gray-100">
+      <div class="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mb-5">
+        <span class="material-symbols-outlined fill-icon text-3xl text-orange-500">local_shipping</span>
+      </div>
+      <h3 class="font-headline font-bold text-xl mb-2">Envío prioritario</h3>
+      <p class="text-gray-500 text-sm leading-relaxed">Tu pedido siempre en el primer turno del lunes. Llegás a tu casa y ya tenés la comida.</p>
+    </div>
+    <div class="benefit-card bg-white rounded-3xl p-8 border border-gray-100">
+      <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-5">
+        <span class="material-symbols-outlined fill-icon text-3xl text-blue-600">groups</span>
+      </div>
+      <h3 class="font-headline font-bold text-xl mb-2">Pack compartido</h3>
+      <p class="text-gray-500 text-sm leading-relaxed">¿Vivís con compañeros? Pueden armar un pack entre varios y dividir el costo.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CÓMO ACTIVAR -->
+<section class="py-16 bg-gray-50">
+  <div class="max-w-4xl mx-auto px-6">
+    <h2 class="font-headline font-extrabold text-3xl text-center text-green-900 mb-12">¿Cómo activás tu descuento?</h2>
+    <div class="grid md:grid-cols-3 gap-8">
+      <div class="text-center">
+        <div class="w-12 h-12 rounded-full bg-green-900 text-white font-headline font-bold text-xl flex items-center justify-center mx-auto mb-4">1</div>
+        <h3 class="font-bold mb-2">Escribinos por WhatsApp</h3>
+        <p class="text-gray-500 text-sm">Mandanos un mensaje diciendo que sos estudiante y en qué institución cursás.</p>
+      </div>
+      <div class="text-center">
+        <div class="w-12 h-12 rounded-full bg-green-900 text-white font-headline font-bold text-xl flex items-center justify-center mx-auto mb-4">2</div>
+        <h3 class="font-bold mb-2">Enviás tu credencial</h3>
+        <p class="text-gray-500 text-sm">Foto de tu DNI + credencial o constancia de alumno regular. Solo una vez.</p>
+      </div>
+      <div class="text-center">
+        <div class="w-12 h-12 rounded-full bg-green-900 text-white font-headline font-bold text-xl flex items-center justify-center mx-auto mb-4">3</div>
+        <h3 class="font-bold mb-2">¡Listo! Pedí con descuento</h3>
+        <p class="text-gray-500 text-sm">Te habilitamos el descuento y cada pedido que hagas tendrá el 15% menos.</p>
+      </div>
+    </div>
+    <div class="text-center mt-12">
+      <a href="https://wa.me/5493800000000?text=Hola!%20Soy%20estudiante%20y%20quiero%20acceder%20al%20descuento%20de%20Viandix%20🎓" target="_blank"
+         class="inline-flex items-center gap-2 px-10 py-4 rounded-full font-bold text-lg" style="background:#25D366;color:white">
+        <span class="material-symbols-outlined fill-icon">chat</span> Activar mi descuento ahora
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="py-16 max-w-3xl mx-auto px-6">
+  <h2 class="font-headline font-extrabold text-2xl text-center text-green-900 mb-10">Preguntas frecuentes</h2>
+  <div class="space-y-4" id="faq">
+    <details class="bg-white rounded-2xl border border-gray-100 p-5 group">
+      <summary class="font-semibold cursor-pointer flex justify-between items-center">
+        ¿Qué instituciones son válidas?
+        <span class="material-symbols-outlined text-gray-400 group-open:rotate-180 transition-transform">expand_more</span>
+      </summary>
+      <p class="text-gray-500 text-sm mt-3 leading-relaxed">Cualquier universidad pública o privada, instituto terciario o escuela técnica de La Rioja capital y alrededores. Si tenés dudas, escribinos.</p>
+    </details>
+    <details class="bg-white rounded-2xl border border-gray-100 p-5 group">
+      <summary class="font-semibold cursor-pointer flex justify-between items-center">
+        ¿El descuento se renueva?
+        <span class="material-symbols-outlined text-gray-400 group-open:rotate-180 transition-transform">expand_more</span>
+      </summary>
+      <p class="text-gray-500 text-sm mt-3 leading-relaxed">Sí, cada año te pedimos que actualices tu constancia de alumno regular para mantener el beneficio activo.</p>
+    </details>
+    <details class="bg-white rounded-2xl border border-gray-100 p-5 group">
+      <summary class="font-semibold cursor-pointer flex justify-between items-center">
+        ¿Puedo combinar el descuento con otras promociones?
+        <span class="material-symbols-outlined text-gray-400 group-open:rotate-180 transition-transform">expand_more</span>
+      </summary>
+      <p class="text-gray-500 text-sm mt-3 leading-relaxed">El descuento estudiantil no se combina con otras promociones, pero siempre aplicará el beneficio mayor.</p>
+    </details>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="border-t border-gray-100 py-8">
+  <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-400">
+    <a href="/" class="font-headline font-bold text-green-900">viandix!</a>
+    <p>© 2025 Viandix · La Rioja, Argentina</p>
+    <div class="flex gap-6">
+      <a href="/" class="hover:text-green-900 transition-colors">Inicio</a>
+      <a href="/#como-funciona" class="hover:text-green-900 transition-colors">Cómo funciona</a>
+      <a href="https://wa.me/5493800000000" target="_blank" class="hover:text-green-900 transition-colors">WhatsApp</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

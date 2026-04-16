@@ -76,16 +76,39 @@ tailwind.config = {
   <p class="text-sm text-on-surface-variant font-medium" id="loading-msg">Cargando…</p>
 </div>
 
-<nav class="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-xl border-b border-outline-variant/30">
-  <div class="flex justify-between items-center px-5 py-3 max-w-lg mx-auto">
-    <span class="text-lg font-bold tracking-tight text-primary font-headline">Viandix</span>
-    <div id="cart-btn" style="display:none">
-      <button class="relative p-2 text-primary hover:opacity-70 transition-opacity">
-        <span class="material-symbols-outlined">shopping_bag</span>
-        <span id="cart-count" class="absolute -top-0 -right-0 w-5 h-5 bg-secondary text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
+<nav class="fixed top-0 w-full z-50 bg-white/95 backdrop-blur-xl border-b border-outline-variant/30">
+  <div class="flex justify-between items-center px-6 py-3 max-w-7xl mx-auto">
+    <span class="text-xl font-extrabold tracking-tight text-primary font-headline">viandix!</span>
+    <!-- Nav links (desktop) -->
+    <div id="nav-links" class="hidden md:flex items-center gap-8">
+      <a href="#como-funciona" class="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Cómo funciona</a>
+      <a href="estudiantes.html" class="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Estudiantes</a>
+      <a href="#contacto" class="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Contacto</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <div id="cart-btn" style="display:none">
+        <button class="relative p-2 text-primary hover:opacity-70 transition-opacity">
+          <span class="material-symbols-outlined">shopping_bag</span>
+          <span id="cart-count" class="absolute -top-0 -right-0 w-5 h-5 bg-secondary text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
+        </button>
+      </div>
+      <button onclick="showScreen('screen-pack')" class="hidden md:flex items-center px-5 py-2 bg-primary text-white rounded-full text-sm font-bold hover:bg-primary-container transition-colors">
+        Pedir ahora
+      </button>
+      <!-- Mobile menu btn -->
+      <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-primary">
+        <span class="material-symbols-outlined" id="menu-icon">menu</span>
       </button>
     </div>
   </div>
+  <!-- Mobile menu -->
+  <div id="mobile-menu" style="display:none" class="md:hidden border-t border-outline-variant/20 px-6 py-4 space-y-3 bg-white">
+    <a href="#como-funciona" onclick="toggleMobileMenu()" class="block text-sm font-semibold text-on-surface-variant py-2">Cómo funciona</a>
+    <a href="estudiantes.html" class="block text-sm font-semibold text-on-surface-variant py-2">Estudiantes</a>
+    <a href="#contacto" onclick="toggleMobileMenu()" class="block text-sm font-semibold text-on-surface-variant py-2">Contacto</a>
+    <button onclick="showScreen('screen-pack'); toggleMobileMenu();" class="w-full py-3 bg-primary text-white rounded-full text-sm font-bold mt-2">Pedir ahora</button>
+  </div>
+  <!-- Step dots (solo en pasos del pedido) -->
   <div id="step-dots" style="display:none!important" class="flex justify-center gap-2 pb-2.5">
     <div class="step-dot active" id="dot-1"></div>
     <div class="step-dot" id="dot-2"></div>
@@ -96,37 +119,140 @@ tailwind.config = {
 <div id="toast"></div>
 
 <!-- SCREEN 1: CATÁLOGO -->
-<div id="screen-catalog" class="screen active pt-14">
-  <div class="relative bg-primary px-6 pt-10 pb-16 overflow-hidden">
-    <div class="absolute inset-0 opacity-10" style="background:radial-gradient(circle at 80% 20%,#a9f0de 0%,transparent 60%)"></div>
-    <div class="relative z-10 max-w-lg mx-auto">
-      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-primary-fixed text-xs font-semibold mb-4">
-        <span class="material-symbols-outlined fill-icon text-base">local_shipping</span>
-        Envíos todos los lunes · La Rioja
-      </div>
-      <h1 class="text-4xl font-headline font-extrabold text-white leading-[1.1] mb-3">Comé bien,<br/><span class="text-secondary-container">sin cocinar.</span></h1>
-      <p class="text-primary-fixed-dim text-sm leading-relaxed mb-6">Elegí tu pack de viandas congeladas y te las llevamos el lunes.</p>
-      <button onclick="showScreen('screen-pack')" class="w-full py-3.5 bg-secondary-container text-on-surface rounded-full font-bold text-base hover:opacity-90 transition-opacity">Armar mi pack →</button>
+<div id="screen-catalog" class="screen active pt-16">
+
+  <!-- HERO -->
+  <section class="relative bg-primary overflow-hidden">
+    <div class="absolute inset-0">
+      <img src="https://images.unsplash.com/photo-1547592180-85f173990554?w=1400&q=80" alt="Viandas" class="w-full h-full object-cover opacity-20"/>
     </div>
-  </div>
-  <div class="max-w-lg mx-auto px-5 -mt-5 mb-6">
+    <div class="relative z-10 max-w-7xl mx-auto px-6 py-16 md:py-24 grid md:grid-cols-2 gap-12 items-center">
+      <div>
+        <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 text-primary-fixed text-xs font-semibold mb-5">
+          <span class="material-symbols-outlined fill-icon text-base">local_shipping</span>
+          Envíos todos los lunes · La Rioja
+        </div>
+        <h1 class="text-5xl md:text-6xl font-headline font-extrabold text-white leading-[1.05] mb-5">
+          Comé bien,<br/><span class="text-secondary-container">sin cocinar.</span>
+        </h1>
+        <p class="text-primary-fixed-dim text-lg leading-relaxed mb-4">
+          Elegí tus viandas congeladas, las preparamos con ingredientes frescos y te las llevamos el lunes a tu puerta.
+        </p>
+        <ul class="space-y-2 mb-8">
+          <li class="flex items-center gap-2 text-primary-fixed text-sm"><span class="material-symbols-outlined fill-icon text-secondary-container text-xl">check_circle</span>Armá tu pack y elegís cada vianda</li>
+          <li class="flex items-center gap-2 text-primary-fixed text-sm"><span class="material-symbols-outlined fill-icon text-secondary-container text-xl">check_circle</span>Entrega semanal todos los lunes</li>
+          <li class="flex items-center gap-2 text-primary-fixed text-sm"><span class="material-symbols-outlined fill-icon text-secondary-container text-xl">check_circle</span>Pagá con tarjeta, transferencia o efectivo</li>
+        </ul>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button onclick="showScreen('screen-pack')" class="px-8 py-4 bg-secondary-container text-on-surface rounded-full font-bold text-base hover:opacity-90 transition-opacity">
+            Armar mi pack →
+          </button>
+          <a href="#como-funciona" class="px-8 py-4 bg-white/10 text-white rounded-full font-bold text-base hover:bg-white/20 transition-colors text-center">
+            Cómo funciona
+          </a>
+        </div>
+      </div>
+      <!-- Foto hero desktop -->
+      <div class="hidden md:grid grid-cols-2 gap-3">
+        <img src="https://images.unsplash.com/photo-1574484284002-952d92456975?w=400&q=80" class="rounded-2xl object-cover h-52 w-full" alt="Vianda"/>
+        <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400&q=80" class="rounded-2xl object-cover h-52 w-full mt-6" alt="Comida"/>
+        <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&q=80" class="rounded-2xl object-cover h-52 w-full -mt-6" alt="Ensalada"/>
+        <img src="https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&q=80" class="rounded-2xl object-cover h-52 w-full" alt="Plato"/>
+      </div>
+    </div>
+  </section>
+
+  <!-- PACK CHIPS -->
+  <div class="max-w-7xl mx-auto px-6 -mt-5 mb-8 relative z-10">
     <div class="bg-white rounded-2xl shadow-lg p-4 flex gap-3 justify-between" id="pack-chips">
       <!-- Generado dinámicamente desde Supabase -->
     </div>
   </div>
-  <div class="max-w-lg mx-auto px-5 mb-24">
-    <div class="flex items-center justify-between mb-1">
-      <h2 class="font-headline font-bold text-xl text-primary">Menú esta semana</h2>
+
+  <!-- MENÚ SEMANA -->
+  <div class="max-w-7xl mx-auto px-6 mb-16">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="font-headline font-bold text-2xl text-primary">Menú esta semana</h2>
       <span id="menu-fecha" class="text-xs text-on-surface-variant"></span>
     </div>
-    <p class="text-on-surface-variant text-sm mb-4">Elegí tu pack para empezar a seleccionar.</p>
-    <div class="grid grid-cols-2 gap-3" id="menu-preview"></div>
+    <p class="text-on-surface-variant text-sm mb-5">Elegí tu pack para empezar a seleccionar tus viandas.</p>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="menu-preview"></div>
   </div>
+
+  <!-- CÓMO FUNCIONA -->
+  <section id="como-funciona" class="bg-surface-container-low py-20">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-14">
+        <h2 class="font-headline font-extrabold text-3xl md:text-4xl text-primary mb-3">Tu semana, organizada</h2>
+        <p class="text-on-surface-variant text-lg max-w-xl mx-auto">Sin compras, sin cocinar, sin limpiar. Solo disfrutar.</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
+            <span class="material-symbols-outlined fill-icon text-3xl text-white">restaurant_menu</span>
+          </div>
+          <h3 class="font-headline font-bold text-lg mb-2">1. Elegís</h3>
+          <p class="text-on-surface-variant text-sm">Seleccionás tu pack y las viandas que querés para la semana.</p>
+        </div>
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
+            <span class="material-symbols-outlined fill-icon text-3xl text-white">payments</span>
+          </div>
+          <h3 class="font-headline font-bold text-lg mb-2">2. Pagás</h3>
+          <p class="text-on-surface-variant text-sm">Con tarjeta, transferencia o efectivo. Rápido y seguro.</p>
+        </div>
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
+            <span class="material-symbols-outlined fill-icon text-3xl text-white">local_shipping</span>
+          </div>
+          <h3 class="font-headline font-bold text-lg mb-2">3. Recibís</h3>
+          <p class="text-on-surface-variant text-sm">Te entregamos el lunes en el horario que elegís, en tu puerta.</p>
+        </div>
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
+            <span class="material-symbols-outlined fill-icon text-3xl text-white">microwave</span>
+          </div>
+          <h3 class="font-headline font-bold text-lg mb-2">4. Calentás y disfrutás</h3>
+          <p class="text-on-surface-variant text-sm">5 minutos en el microondas. Listo para comer.</p>
+        </div>
+      </div>
+      <div class="text-center mt-12">
+        <button onclick="showScreen('screen-pack')" class="px-10 py-4 bg-primary text-white rounded-full font-bold text-base hover:bg-primary-container transition-colors">
+          Empezar ahora →
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACTO -->
+  <section id="contacto" class="py-16 max-w-7xl mx-auto px-6">
+    <div class="bg-primary rounded-3xl p-10 md:p-16 text-center">
+      <h2 class="font-headline font-extrabold text-3xl text-white mb-3">¿Tenés alguna pregunta?</h2>
+      <p class="text-primary-fixed-dim mb-8">Escribinos por WhatsApp y te respondemos al toque.</p>
+      <a href="https://wa.me/5493800000000" target="_blank" class="inline-flex items-center gap-2 px-8 py-4 rounded-full font-bold text-base" style="background:#25D366;color:white">
+        <span class="material-symbols-outlined fill-icon">chat</span> Escribinos por WhatsApp
+      </a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-outline-variant/30 py-8">
+    <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-on-surface-variant">
+      <span class="font-headline font-bold text-primary">viandix!</span>
+      <p>© 2025 Viandix · La Rioja, Argentina</p>
+      <div class="flex gap-6">
+        <a href="#como-funciona" class="hover:text-primary transition-colors">Cómo funciona</a>
+        <a href="estudiantes.html" class="hover:text-primary transition-colors">Estudiantes</a>
+        <a href="https://wa.me/5493800000000" target="_blank" class="hover:text-primary transition-colors">WhatsApp</a>
+      </div>
+    </div>
+  </footer>
+
 </div>
 
 <!-- SCREEN 2: PACK -->
 <div id="screen-pack" class="screen pt-16 pb-28">
-  <div class="max-w-lg mx-auto px-5 py-6 fade-up">
+  <div class="max-w-2xl mx-auto px-6 py-6 fade-up">
     <button onclick="showScreen('screen-catalog')" class="flex items-center gap-1 text-sm text-on-surface-variant mb-5"><span class="material-symbols-outlined text-base">arrow_back</span> Volver</button>
     <h2 class="font-headline font-bold text-2xl text-primary mb-1">Elegí tu pack</h2>
     <p class="text-on-surface-variant text-sm mb-6">Cuantas más viandas, mejor precio por unidad.</p>
@@ -136,14 +262,14 @@ tailwind.config = {
       <p class="text-sm text-on-surface-variant">Podés mezclar cualquier vianda del menú. Cada pack incluye envío gratis.</p>
     </div>
   </div>
-  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/30 px-5 py-4 max-w-lg mx-auto">
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/30 px-6 py-4 max-w-2xl mx-auto">
     <button id="btn-pack-next" onclick="goToViandas()" disabled class="btn-primary w-full py-3.5 rounded-full font-bold text-base">Elegir viandas</button>
   </div>
 </div>
 
 <!-- SCREEN 3: VIANDAS -->
 <div id="screen-viandas" class="screen pt-14 pb-28">
-  <div class="max-w-lg mx-auto px-5 pt-4">
+  <div class="max-w-2xl mx-auto px-6 pt-4">
     <div class="sticky top-14 bg-white/95 backdrop-blur-sm z-40 py-3 -mx-5 px-5 border-b border-outline-variant/20">
       <div class="flex justify-between items-center mb-2">
         <span class="text-sm font-semibold">Viandas elegidas</span>
@@ -160,14 +286,14 @@ tailwind.config = {
     <div class="flex gap-2 overflow-x-auto pb-3 -mx-5 px-5 mb-4" id="cat-filters"></div>
     <div class="grid grid-cols-2 gap-3 mb-6" id="viandas-grid"></div>
   </div>
-  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/30 px-5 py-4 max-w-lg mx-auto">
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/30 px-6 py-4 max-w-2xl mx-auto">
     <button id="btn-viandas-next" onclick="showScreen('screen-entrega'); setupEntrega();" disabled class="btn-primary w-full py-3.5 rounded-full font-bold text-base">Elegir entrega</button>
   </div>
 </div>
 
 <!-- SCREEN 4: ENTREGA -->
 <div id="screen-entrega" class="screen pt-16 pb-28">
-  <div class="max-w-lg mx-auto px-5 py-5 fade-up">
+  <div class="max-w-2xl mx-auto px-6 py-5 fade-up">
     <button onclick="showScreen('screen-viandas')" class="flex items-center gap-1 text-sm text-on-surface-variant mb-5"><span class="material-symbols-outlined text-base">arrow_back</span> Volver</button>
     <h2 class="font-headline font-bold text-2xl text-primary mb-1">¿Cuándo te entregamos?</h2>
     <p class="text-on-surface-variant text-sm mb-5">Hacemos repartos todos los lunes.</p>
@@ -201,14 +327,14 @@ tailwind.config = {
     <div id="lunes-container-2" style="display:none" class="mt-5"><p class="text-sm font-semibold mb-3">Segundo lunes de entrega</p><div class="grid grid-cols-3 gap-2" id="lunes-grid-2"></div></div>
     <div class="mt-5"><p class="text-sm font-semibold mb-3">Rango horario</p><div class="grid grid-cols-2 gap-2" id="horario-grid"></div></div>
   </div>
-  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/30 px-5 py-4 max-w-lg mx-auto">
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/30 px-6 py-4 max-w-2xl mx-auto">
     <button id="btn-entrega-next" onclick="showScreen('screen-checkout'); renderCheckout();" disabled class="btn-primary w-full py-3.5 rounded-full font-bold text-base">Continuar al pago</button>
   </div>
 </div>
 
 <!-- SCREEN 5: CHECKOUT -->
 <div id="screen-checkout" class="screen pt-16 pb-28">
-  <div class="max-w-lg mx-auto px-5 py-5 fade-up">
+  <div class="max-w-2xl mx-auto px-6 py-5 fade-up">
     <button onclick="showScreen('screen-entrega')" class="flex items-center gap-1 text-sm text-on-surface-variant mb-5"><span class="material-symbols-outlined text-base">arrow_back</span> Volver</button>
     <h2 class="font-headline font-bold text-2xl text-primary mb-5">Confirmá tu pedido</h2>
     <div class="bg-surface-container-low rounded-2xl p-4 mb-5"><p class="text-xs font-bold uppercase tracking-widest text-outline mb-3">Resumen</p><div id="checkout-summary" class="space-y-1.5 text-sm"></div></div>
@@ -236,14 +362,14 @@ tailwind.config = {
     </div>
     <p class="text-xs text-on-surface-variant text-center mb-2">Envío gratis incluido en el pack</p>
   </div>
-  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/30 px-5 py-4 max-w-lg mx-auto">
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/30 px-6 py-4 max-w-2xl mx-auto">
     <button onclick="confirmOrder()" id="btn-confirm" class="btn-primary w-full py-3.5 rounded-full font-bold text-base">Confirmar pedido</button>
   </div>
 </div>
 
 <!-- SCREEN 6: CONFIRMACIÓN -->
 <div id="screen-confirm" class="screen pt-14">
-  <div class="max-w-lg mx-auto px-5 py-12 text-center fade-up">
+  <div class="max-w-2xl mx-auto px-6 py-12 text-center fade-up">
     <div class="w-24 h-24 bg-primary-fixed rounded-full flex items-center justify-center mx-auto mb-6 success-icon"><span class="material-symbols-outlined fill-icon text-5xl text-primary">check_circle</span></div>
     <h2 class="font-headline font-extrabold text-3xl text-primary mb-2">¡Pedido confirmado!</h2>
     <p class="text-on-surface-variant mb-6" id="confirm-msg"></p>
@@ -328,6 +454,14 @@ function toISO(d){return d?d.toISOString().slice(0,10):null;}
 function setLoading(show,msg='Guardando tu pedido…'){document.getElementById('loading-msg').textContent=msg;document.getElementById('loading-overlay').classList.toggle('show',show);}
 
 function quickPack(qty){selectPack(qty);showScreen('screen-pack');}
+
+function toggleMobileMenu(){
+  const m=document.getElementById('mobile-menu');
+  const icon=document.getElementById('menu-icon');
+  const open=m.style.display==='none'||m.style.display==='';
+  m.style.display=open?'block':'none';
+  icon.textContent=open?'close':'menu';
+}
 
 function renderPackChips() {
   const el = document.getElementById('pack-chips');
