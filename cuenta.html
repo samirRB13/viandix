@@ -185,7 +185,7 @@ body { font-family:'Inter',sans-serif; background:#faf9f7; color:#1a1c1b; }
             </div>
             <div class="flex-1">
               <h2 class="font-headline font-bold text-lg mb-0.5">Descuento Estudiantil</h2>
-              <p class="text-sm text-gray-500 mb-3">Accedé al <strong>15% de descuento</strong> en todos los packs subiendo tu certificado de alumno regular.</p>
+              <p class="text-sm text-gray-500 mb-3">Accedé al <strong>8% de descuento</strong> en todos los packs subiendo tu certificado de alumno regular.</p>
               <div id="cert-estado"></div>
             </div>
           </div>
@@ -394,7 +394,7 @@ async function loadCertificado() {
 
   if (data.estado === 'aprobado' && !vencido) {
     estadoEl.innerHTML = `
-      <span class="badge badge-aprobado mb-2 inline-flex">✓ Aprobado · 15% de descuento activo</span>
+      <span class="badge badge-aprobado mb-2 inline-flex">✓ Aprobado · 8% de descuento activo</span>
       ${venc ? `<p class="text-xs text-gray-500 mt-1">Vence el ${venc.toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'})}</p>` : ''}`;
     studentBadge.style.display = 'flex';
     uploadCard.style.display = 'none';

@@ -736,7 +736,7 @@ async function aprobarCert() {
           numero: 'CERT-' + editingCertId,
           horario: venc ? `Tu descuento vence el ${fmtDate(venc)}` : 'Descuento activo',
           lunes1: null,
-          custom_msg: `🎓 *¡Tu descuento estudiantil fue aprobado!*\n\nHola ${cert.perfiles.nombre}! Tu certificado fue verificado y el *15% de descuento* ya está activo en tu cuenta de Viandix.\n\n${venc?`📅 Vence el ${fmtDate(venc)}\n\n`:''}Hacé tu próximo pedido en:\n🌐 https://viandix.vercel.app`,
+          custom_msg: `🎓 *¡Tu descuento estudiantil fue aprobado!*\n\nHola ${cert.perfiles.nombre}! Tu certificado fue verificado y el *8% de descuento* ya está activo en tu cuenta de Viandix.\n\n${venc?`📅 Vence el ${fmtDate(venc)}\n\n`:''}Hacé tu próximo pedido en:\n🌐 https://viandix.vercel.app`,
         })
       });
     } catch(e) { console.error(e); }

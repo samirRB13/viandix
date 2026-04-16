@@ -389,13 +389,82 @@ const HORARIOS = ["8:00 – 11:00","11:00 – 14:00","14:00 – 17:00","17:00 �
 let PACKS = [];
 let VIANDAS = [];
 let S = {packQty:null,packPrecio:null,viandas:[],entregaMode:'una',splitA:5,lunes1:null,lunes2:null,horario:null,pago:'transferencia',currentCat:'todas'};
+let currentUser = null;
+let descuentoEstudiante = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
   renderLunes(); renderHorarios();
   setLoading(true,'Cargando menú…');
-  await Promise.all([loadPacks(), loadViandas()]);
+  // Cargar sesión de usuario en paralelo
+  const [session] = await Promise.all([
+    sb.auth.getSession(),
+    loadPacks(),
+    loadViandas(),
+  ]);
+  if (session?.data?.session) {
+    currentUser = session.data.session.user;
+    updateNavUser();
+  }
   setLoading(false);
 });
+
+function updateNavUser() {
+  // Mostrar "Mi cuenta" con nombre en navbar si está logueado
+  const meta = currentUser?.user_metadata;
+  if (!meta) return;
+  const nombre = meta.full_name || meta.name || '';
+  // Agregar link de cuenta con nombre si existe el nav
+  const navLinks = document.getElementById('nav-links');
+  if (navLinks && nombre) {
+    const existing = document.getElementById('nav-cuenta-link');
+    if (!existing) {
+      const a = document.createElement('a');
+      a.id = 'nav-cuenta-link';
+      a.href = 'cuenta.html';
+      a.className = 'text-sm font-semibold text-primary transition-colors flex items-center gap-1';
+      a.innerHTML = `<span class="material-symbols-outlined fill-icon text-base">person</span>${nombre.split(' ')[0]}`;
+      navLinks.appendChild(a);
+    }
+  }
+}
+
+async function loadPerfilEnCheckout() {
+  if (!currentUser) return;
+  // Cargar perfil guardado
+  const { data: perfil } = await sb.from('perfiles').select('*').eq('id', currentUser.id).single();
+  if (perfil) {
+    if (perfil.nombre)    document.getElementById('f-nombre').value = perfil.nombre;
+    if (perfil.telefono)  document.getElementById('f-tel').value    = perfil.telefono;
+    if (perfil.direccion) document.getElementById('f-dir').value    = perfil.direccion;
+    if (perfil.barrio)    document.getElementById('f-barrio').value  = perfil.barrio;
+  }
+  // Verificar descuento estudiante
+  const { data: cert } = await sb.from('certificados')
+    .select('estado, vencimiento')
+    .eq('user_id', currentUser.id)
+    .eq('estado', 'aprobado')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  const hoy = new Date();
+  const venc = cert?.vencimiento ? new Date(cert.vencimiento) : null;
+  descuentoEstudiante = cert && (!venc || venc >= hoy);
+
+  if (descuentoEstudiante) {
+    // Mostrar badge de descuento en checkout
+    const existing = document.getElementById('descuento-badge');
+    if (!existing) {
+      const badge = document.createElement('div');
+      badge.id = 'descuento-badge';
+      badge.className = 'flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-200 mb-4';
+      badge.innerHTML = `<span class="material-symbols-outlined fill-icon text-green-700 text-base">school</span><span class="text-sm font-semibold text-green-800">Descuento estudiantil aplicado: 8% OFF</span>`;
+      const summary = document.getElementById('checkout-summary');
+      summary.parentNode.insertBefore(badge, summary.parentNode.firstChild);
+    }
+    renderCheckoutTotales();
+  }
+}
 
 async function loadPacks() {
   const {data, error} = await sb.from('packs').select('*').eq('activo',true).order('orden',{ascending:true});
@@ -542,18 +611,45 @@ function renderHorarios(){document.getElementById('horario-grid').innerHTML=HORA
 function selHorario(i,el){S.horario=HORARIOS[i];document.querySelectorAll('[data-g="h"]').forEach(s=>s.classList.remove('selected'));el.classList.add('selected');checkEntregaOk();}
 function checkEntregaOk(){document.getElementById('btn-entrega-next').disabled=!(S.lunes1&&S.horario&&(S.entregaMode==='una'||S.lunes2));}
 
-function renderCheckout(){
-  const pack=PACKS.find(p=>p.qty===S.packQty);const counts={};S.viandas.forEach(id=>{counts[id]=(counts[id]||0)+1;});
+async function renderCheckout(){
+  const pack=PACKS.find(p=>p.qty===S.packQty);
+  const counts={};S.viandas.forEach(id=>{counts[id]=(counts[id]||0)+1;});
   let html=`<div class="flex justify-between"><span class="text-on-surface-variant">Pack</span><span class="font-semibold">${pack.label}</span></div><div class="border-t border-outline-variant/30 my-2"></div>`;
   Object.entries(counts).forEach(([id,qty])=>{const v=VIANDAS.find(x=>x.id===parseInt(id));html+=`<div class="flex justify-between"><span class="text-on-surface-variant">${v.emoji||'🍽'} ${v.nombre}${qty>1?` x${qty}`:''}</span></div>`;});
   html+=`<div class="border-t border-outline-variant/30 my-2"></div><div class="flex justify-between"><span class="text-on-surface-variant">Entrega</span><span class="font-semibold">${fmtDate(S.lunes1)}</span></div>`;
   if(S.entregaMode==='dos')html+=`<div class="flex justify-between"><span class="text-on-surface-variant">2da entrega</span><span class="font-semibold">${fmtDate(S.lunes2)}</span></div>`;
   html+=`<div class="flex justify-between"><span class="text-on-surface-variant">Horario</span><span class="font-semibold">${S.horario}</span></div>`;
   document.getElementById('checkout-summary').innerHTML=html;
-  const total=pack.precio+(S.entregaMode==='dos'?500:0);
-  document.getElementById('t-pack').textContent=fmtPesos(pack.precio);
-  document.getElementById('t-total').textContent=fmtPesos(total);
-  document.getElementById('t-extra-row').style.display=S.entregaMode==='dos'?'flex':'none';
+  renderCheckoutTotales();
+  // Cargar perfil y descuento en paralelo (no bloqueante)
+  loadPerfilEnCheckout();
+}
+
+function renderCheckoutTotales() {
+  const pack=PACKS.find(p=>p.qty===S.packQty);
+  if(!pack) return;
+  let precioBase = pack.precio;
+  let extra = S.entregaMode==='dos' ? 500 : 0;
+  let descuento = descuentoEstudiante ? Math.round(precioBase * 0.08) : 0;
+  let total = precioBase - descuento + extra;
+
+  document.getElementById('t-pack').textContent = fmtPesos(precioBase);
+  document.getElementById('t-total').textContent = fmtPesos(total);
+  document.getElementById('t-extra-row').style.display = extra ? 'flex' : 'none';
+
+  // Fila de descuento
+  let descRow = document.getElementById('t-descuento-row');
+  if (descuento > 0) {
+    if (!descRow) {
+      descRow = document.createElement('div');
+      descRow.id = 't-descuento-row';
+      descRow.className = 'flex justify-between text-white mb-2';
+      descRow.innerHTML = `<span class="text-sm opacity-80">Descuento estudiante (8%)</span><span class="font-semibold text-green-300">-${fmtPesos(descuento)}</span>`;
+      document.getElementById('t-pack').closest('div').after(descRow);
+    }
+  } else if (descRow) {
+    descRow.remove();
+  }
 }
 function selectPago(el,method){S.pago=method;document.querySelectorAll('.pago-opt').forEach(o=>{o.classList.remove('selected');o.querySelector('input').checked=false;});el.classList.add('selected');el.querySelector('input').checked=true;}
 
@@ -563,11 +659,14 @@ async function confirmOrder(){
   const dir=document.getElementById('f-dir').value.trim();
   const barrio=document.getElementById('f-barrio').value.trim();
   if(!nombre||!tel||!dir){showToast('Completá nombre, teléfono y dirección');return;}
-  const pack=PACKS.find(p=>p.qty===S.packQty),total=pack.precio+(S.entregaMode==='dos'?500:0);
+  const pack=PACKS.find(p=>p.qty===S.packQty);
+  const extra = S.entregaMode==='dos' ? 500 : 0;
+  const descuento = descuentoEstudiante ? Math.round(pack.precio * 0.08) : 0;
+  const total = pack.precio - descuento + extra;
   const numero='VDX-'+Date.now().toString().slice(-5);
   const counts={};S.viandas.forEach(id=>{counts[id]=(counts[id]||0)+1;});
   const viandasObj=Object.entries(counts).map(([id,qty])=>({id:parseInt(id),nombre:VIANDAS.find(v=>v.id===parseInt(id)).nombre,qty}));
-  const pedido={numero,nombre,telefono:tel,direccion:dir,barrio,pack_qty:S.packQty,pack_precio:pack.precio,viandas:viandasObj,entrega_modo:S.entregaMode,lunes1:toISO(S.lunes1),lunes2:S.entregaMode==='dos'?toISO(S.lunes2):null,split_a:S.entregaMode==='dos'?S.splitA:null,horario:S.horario,pago_method:S.pago,total,estado:'pendiente'};
+  const pedido={numero,nombre,telefono:tel,direccion:dir,barrio,pack_qty:S.packQty,pack_precio:pack.precio,viandas:viandasObj,entrega_modo:S.entregaMode,lunes1:toISO(S.lunes1),lunes2:S.entregaMode==='dos'?toISO(S.lunes2):null,split_a:S.entregaMode==='dos'?S.splitA:null,horario:S.horario,pago_method:S.pago,total,descuento_estudiante:descuento>0,estado:'pendiente'};
 
   setLoading(true,'Guardando tu pedido…');
   try {
@@ -575,26 +674,17 @@ async function confirmOrder(){
     if(error) throw error;
 
     if(S.pago==='mercadopago') {
-      // Crear preference en MP y redirigir
       setLoading(true,'Preparando pago…');
       const mpRes = await fetch('/api/create-preference', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          titulo: `Viandix – Pack ${S.packQty} viandas`,
-          total,
-          numero,
-          nombre,
-          email: 'cliente@viandix.com',
-        })
+        body:JSON.stringify({ titulo:`Viandix – Pack ${S.packQty} viandas`, total, numero, nombre, email:'cliente@viandix.com' })
       });
       const mpData = await mpRes.json();
       if(!mpRes.ok||!mpData.init_point) throw new Error(mpData.error||'Error al crear el pago');
-      // Redirigir a MercadoPago
       window.location.href = mpData.init_point;
     } else {
-      // Transferencia o efectivo: mostrar pantalla de confirmación normal
-      buildConfirm(pedido,tel,dir,total,numero,viandasObj);
+      buildConfirm(pedido,tel,dir,total,numero,viandasObj,descuento);
       showScreen('screen-confirm');
     }
   } catch(err) {
@@ -602,11 +692,20 @@ async function confirmOrder(){
     showToast('Error al procesar el pedido. Intentá de nuevo.');
   } finally { setLoading(false); }
 }
-function buildConfirm(pedido,tel,dir,total,numero,viandasObj){
+function buildConfirm(pedido,tel,dir,total,numero,viandasObj,descuento=0){
   const vList=viandasObj.map(v=>`${VIANDAS.find(x=>x.id===v.id)?.emoji||'🍽'} ${v.nombre}${v.qty>1?` x${v.qty}`:''}`).join(', ');
   document.getElementById('confirm-msg').textContent=`Pedido #${numero} · Te contactamos al ${tel}`;
-  document.getElementById('confirm-details').innerHTML=`<div class="space-y-2 text-sm"><div class="flex justify-between"><span class="text-on-surface-variant">Pack</span><span class="font-semibold">${pedido.pack_qty} viandas</span></div><div class="flex justify-between"><span class="text-on-surface-variant">Viandas</span><span class="font-semibold text-right max-w-[60%] leading-snug">${vList}</span></div><div class="flex justify-between"><span class="text-on-surface-variant">1er entrega</span><span class="font-semibold">${fmtDate(S.lunes1)} · ${S.horario}</span></div>${S.entregaMode==='dos'?`<div class="flex justify-between"><span class="text-on-surface-variant">2da entrega</span><span class="font-semibold">${fmtDate(S.lunes2)} · ${S.horario}</span></div>`:''}<div class="flex justify-between"><span class="text-on-surface-variant">Dirección</span><span class="font-semibold">${dir}</span></div><div class="flex justify-between"><span class="text-on-surface-variant">Pago</span><span class="font-semibold capitalize">${pedido.pago_method}</span></div><div class="border-t border-outline-variant/30 pt-2 flex justify-between"><span class="font-bold">Total</span><span class="font-headline font-bold text-primary">${fmtPesos(total)}</span></div></div>`;
-  const msg=encodeURIComponent(`Hola! Quiero confirmar mi pedido Viandix 🌿\n\n📦 Pack: ${pedido.pack_qty} viandas\n🍽 Viandas: ${vList}\n📅 Entrega: ${fmtDate(S.lunes1)} · ${S.horario}\n${S.entregaMode==='dos'?`📅 2da entrega: ${fmtDate(S.lunes2)}\n`:''}📍 Dirección: ${dir}\n💳 Pago: ${pedido.pago_method}\n💰 Total: ${fmtPesos(total)}\n\nPedido #${numero}`);
+  document.getElementById('confirm-details').innerHTML=`<div class="space-y-2 text-sm">
+    <div class="flex justify-between"><span class="text-on-surface-variant">Pack</span><span class="font-semibold">${pedido.pack_qty} viandas</span></div>
+    <div class="flex justify-between"><span class="text-on-surface-variant">Viandas</span><span class="font-semibold text-right max-w-[60%] leading-snug">${vList}</span></div>
+    <div class="flex justify-between"><span class="text-on-surface-variant">1er entrega</span><span class="font-semibold">${fmtDate(S.lunes1)} · ${S.horario}</span></div>
+    ${S.entregaMode==='dos'?`<div class="flex justify-between"><span class="text-on-surface-variant">2da entrega</span><span class="font-semibold">${fmtDate(S.lunes2)} · ${S.horario}</span></div>`:''}
+    <div class="flex justify-between"><span class="text-on-surface-variant">Dirección</span><span class="font-semibold">${dir}</span></div>
+    <div class="flex justify-between"><span class="text-on-surface-variant">Pago</span><span class="font-semibold capitalize">${pedido.pago_method}</span></div>
+    ${descuento>0?`<div class="flex justify-between text-green-700"><span class="font-semibold">Descuento estudiante</span><span class="font-semibold">-${fmtPesos(descuento)}</span></div>`:''}
+    <div class="border-t border-outline-variant/30 pt-2 flex justify-between"><span class="font-bold">Total</span><span class="font-headline font-bold text-primary">${fmtPesos(total)}</span></div>
+  </div>`;
+  const msg=encodeURIComponent(`Hola! Quiero confirmar mi pedido Viandix 🌿\n\n📦 Pack: ${pedido.pack_qty} viandas\n🍽 Viandas: ${vList}\n📅 Entrega: ${fmtDate(S.lunes1)} · ${S.horario}\n${S.entregaMode==='dos'?`📅 2da entrega: ${fmtDate(S.lunes2)}\n`:''}📍 Dirección: ${dir}\n💳 Pago: ${pedido.pago_method}\n${descuento>0?`🎓 Descuento estudiante: -${fmtPesos(descuento)}\n`:''}💰 Total: ${fmtPesos(total)}\n\nPedido #${numero}`);
   document.getElementById('wa-btn').href=`https://wa.me/5493800000000?text=${msg}`;
 }
 function restart(){S={packQty:null,packPrecio:null,viandas:[],entregaMode:'una',splitA:5,lunes1:null,lunes2:null,horario:null,pago:'transferencia',currentCat:'todas'};showScreen('screen-catalog');}
