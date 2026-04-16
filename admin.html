@@ -357,10 +357,36 @@ function applyFilters(){
     return `<tr class="fade-in"><td class="font-mono text-xs text-gray-500 whitespace-nowrap">${p.numero||'—'}</td><td><p class="font-semibold">${p.nombre}</p><p class="text-xs text-gray-500">${p.telefono}</p><p class="text-xs text-gray-400">${p.direccion}${p.barrio?', '+p.barrio:''}</p></td><td class="font-semibold text-green-900 whitespace-nowrap">${p.pack_qty} viandas</td><td class="max-w-xs">${vList}</td><td class="whitespace-nowrap">${fmtDate(p.lunes1)}${modo}${e2}</td><td class="whitespace-nowrap text-sm">${p.horario||'—'}</td><td class="font-semibold whitespace-nowrap">${fmtPesos(p.total)}</td><td class="capitalize text-sm text-gray-600">${p.pago_method||'—'}</td><td><select class="estado-sel" onchange="updateEstado(${p.id},this.value)"><option value="pendiente" ${p.estado==='pendiente'?'selected':''}>Pendiente</option><option value="preparando" ${p.estado==='preparando'?'selected':''}>Preparando</option><option value="enviado" ${p.estado==='enviado'?'selected':''}>Enviado</option><option value="entregado" ${p.estado==='entregado'?'selected':''}>Entregado</option></select></td></tr>`;
   }).join('');
 }
-async function updateEstado(id,estado){
+async function updateEstado(id, estado) {
   const{error}=await sb.from('pedidos').update({estado}).eq('id',id);
   if(error){showToast('Error al actualizar');return;}
-  const p=allPedidos.find(x=>x.id===id);if(p)p.estado=estado;updateStats();showToast('Estado actualizado');
+  const p=allPedidos.find(x=>x.id===id);
+  if(p) p.estado=estado;
+  updateStats();
+  showToast('Estado actualizado');
+
+  // Enviar WhatsApp automático cuando pasa a "enviado"
+  if(estado==='enviado' && p && p.telefono) {
+    try {
+      const res = await fetch('/api/notify-envio', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          telefono: p.telefono,
+          nombre: p.nombre,
+          numero: p.numero,
+          horario: p.horario,
+          lunes1: p.lunes1,
+        })
+      });
+      const data = await res.json();
+      if(data.success) showToast('✅ WhatsApp enviado al cliente');
+      else showToast('⚠️ Estado actualizado pero no se pudo enviar WhatsApp');
+    } catch(e) {
+      console.error(e);
+      showToast('⚠️ Estado actualizado pero no se pudo enviar WhatsApp');
+    }
+  }
 }
 
 // ===== MENÚ =====
