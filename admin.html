@@ -640,9 +640,18 @@ let allCerts = [], currentCertFilter = 'todos', editingCertId = null;
 
 async function loadCerts() {
   document.getElementById('loading-certs').style.display = 'block';
-  const { data, error } = await sb.from('certificados').select('*, perfiles(nombre, telefono, email)').order('created_at', { ascending: false });
-  if (error) { showToast('Error al cargar certificados'); return; }
-  allCerts = data || [];
+  const { data, error } = await sb.from('certificados').select('*').order('created_at', { ascending: false });
+  if (error) { showToast('Error al cargar certificados: '+error.message); return; }
+
+  // Cargar perfiles por separado
+  const userIds = [...new Set((data||[]).map(c => c.user_id))];
+  let perfilesMap = {};
+  if (userIds.length) {
+    const { data: perfs } = await sb.from('perfiles').select('id, nombre, telefono, email').in('id', userIds);
+    (perfs||[]).forEach(p => { perfilesMap[p.id] = p; });
+  }
+
+  allCerts = (data||[]).map(c => ({ ...c, perfiles: perfilesMap[c.user_id] || null }));
   document.getElementById('loading-certs').style.display = 'none';
   const pendientes = allCerts.filter(c => c.estado === 'pendiente').length;
   const badge = document.getElementById('badge-certs');
